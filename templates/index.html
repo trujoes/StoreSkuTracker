@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Tracker{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Dashboard</p>
+    <h1>Current Status.</h1>
+    <p class="hero-copy">See the live stock for every store and SKU pair, measured against each store's recommended shelf count.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <span>Stores mapped</span>
+      <strong data-summary-key="stores">{{ summary.stores }}</strong>
+    </div>
+    <div class="stat">
+      <span>Total records</span>
+      <strong data-summary-key="records">{{ summary.records }}</strong>
+    </div>
+    <div class="stat">
+      <span>Items on shelf</span>
+      <strong data-summary-key="shelf_total">{{ summary.shelf_total }}</strong>
+    </div>
+    <div class="stat">
+      <span>About to expire</span>
+      <strong data-summary-key="expiring_total">{{ summary.expiring_total }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-layout">
+  <article class="card list-card">
+    <div class="section-heading">
+      <p class="eyebrow">Current Status</p>
+      <h2>Live stock by store and SKU</h2>
+    </div>
+    <form method="get" class="search-bar">
+      <input type="text" name="search" value="{{ search }}" placeholder="Filter by store, SKU, or employee">
+      <button type="submit">Filter</button>
+    </form>
+
+    <div class="status-note" aria-label="Status color conditions">
+      <div class="status-note-item">
+        <span class="status-pill status-healthy">Healthy</span>
+        <p>Current shelf count is above 50% of the recommended count and no items are expiring.</p>
+      </div>
+      <div class="status-note-item">
+        <span class="status-pill status-unhealthy">Unhealthy</span>
+        <p>Current shelf count is 20% to 50% of the recommended count and no items are expiring.</p>
+      </div>
+      <div class="status-note-item">
+        <span class="status-pill status-critical">Critical</span>
+        <p>At least 1 item is expiring, shelf count is below 20%, no count exists, or last visit is older than 72 hours.</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Store</th>
+            <th>SKU</th>
+            <th>Recommended #</th>
+            <th>Current #</th>
+            <th>Expiring #</th>
+            <th>Last visit</th>
+            <th>Status</th>
+            <th>Update</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in current_status_rows %}
+          {% set row_form_id = "status-form-%s-%s"|format(row.store_id, row.sku_id) %}
+          <tr data-store-id="{{ row.store_id }}" data-sku-id="{{ row.sku_id }}" class="{{ 'stale-row' if row.is_stale else '' }}">
+            <td data-label="Store">{{ row.store_name }}</td>
+            <td data-label="SKU">{{ row.sku_name }}</td>
+            <td data-label="Recommended">{{ row.recommended_count }}</td>
+            <td data-label="Current">
+              <input class="inline-number" type="number" min="0" name="shelf_count" form="{{ row_form_id }}" value="{{ row.shelf_count if row.shelf_count is not none else '' }}" placeholder="0" required>
+            </td>
+            <td data-label="Expiring">
+              <input class="inline-number" type="number" min="0" name="expiring_count" form="{{ row_form_id }}" value="{{ row.expiring_count if row.expiring_count is not none else '' }}" placeholder="0" required>
+            </td>
+            <td data-label="Last visit">{{ row.last_visit | datetime_display }}</td>
+            <td data-label="Status"><span class="status-pill status-{{ row.status|lower }}">{{ row.status }}</span></td>
+            <td data-label="Update">
+              <form id="{{ row_form_id }}" action="{{ url_for('record_visit') }}" method="post" class="inline-status-form">
+                <input type="hidden" name="store_id" value="{{ row.store_id }}">
+                <input type="hidden" name="sku_id" value="{{ row.sku_id }}">
+                <input type="hidden" name="employee_name" value="Dashboard Update">
+                <input type="hidden" name="notes" value="Current status update">
+                <button type="button" class="inline-save" onclick="submitInlineForm('{{ row_form_id }}')">Save</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="8" class="empty-state">No store-SKU mappings yet. Add assignments in Manage to see live status here.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">Recent visits</p>
+      <h2>Latest entries</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Visit</th>
+            <th>Store</th>
+            <th>Employee</th>
+            <th>SKU</th>
+            <th>Shelf</th>
+            <th>Expiring</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_visits %}
+          <tr>
+            <td data-label="Visit">{{ row.created_at | datetime_display }}</td>
+            <td data-label="Store">{{ row.store_name }}</td>
+            <td data-label="Employee">{{ row.employee_name }}</td>
+            <td data-label="SKU"><span class="mono-pill">{{ row.sku }}</span></td>
+            <td data-label="Shelf">{{ row.shelf_count }}</td>
+            <td data-label="Expiring">{{ row.expiring_count }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6" class="empty-state">No recent visits to show.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

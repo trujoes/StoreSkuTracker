@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Stock Tracker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div class="ambient ambient-left"></div>
+    <div class="ambient ambient-right"></div>
+    <main class="shell">
+      <header class="topbar card">
+        <div>
+          <p class="eyebrow">Stock Tracker</p>
+          <h2 class="brand-title">Shelf counts, expiry checks, and catalog control</h2>
+        </div>
+        <nav class="nav-links">
+          <a href="{{ url_for('dashboard') }}">Dashboard</a>
+          <a href="{{ url_for('manage') }}">Manage Stores & SKUs</a>
+        </nav>
+      </header>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

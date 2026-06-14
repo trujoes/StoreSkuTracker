@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Stores & SKUs{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Management</p>
+    <h1>Add or remove stores and SKU names.</h1>
+    <p class="hero-copy">These lists drive the dropdowns on the dashboard. Deleting an item only removes it from future selection, not from past visit history.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <span>Active stores</span>
+      <strong>{{ stores|length }}</strong>
+    </div>
+    <div class="stat">
+      <span>Active SKUs</span>
+      <strong>{{ skus|length }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-layout">
+  <article class="card list-card">
+    <div class="section-heading">
+      <p class="eyebrow">Stores</p>
+      <h2>Store list</h2>
+    </div>
+    <form action="{{ url_for('add_store') }}" method="post" class="catalog-form">
+      <label>
+        Store name
+        <input type="text" name="name" placeholder="Downtown Market" required>
+      </label>
+      <button type="submit">Add store</button>
+    </form>
+    <div class="manage-list">
+      {% for store in stores %}
+      <div class="manage-item">
+        <span>{{ store.name }}</span>
+        <form action="{{ url_for('delete_store', store_id=store.id) }}" method="post">
+          <button type="submit" class="danger" onclick="return confirm('Delete this store from the dropdown list?')">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="empty-state">No stores added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card">
+    <div class="section-heading">
+      <p class="eyebrow">SKUs</p>
+      <h2>SKU list</h2>
+    </div>
+    <form action="{{ url_for('add_sku') }}" method="post" class="catalog-form">
+      <label>
+        SKU name
+        <input type="text" name="name" placeholder="SKU-48219" required>
+      </label>
+      <button type="submit">Add SKU</button>
+    </form>
+    <div class="manage-list">
+      {% for sku in skus %}
+      <div class="manage-item">
+        <span>{{ sku.name }}</span>
+        <form action="{{ url_for('delete_sku', sku_id=sku.id) }}" method="post">
+          <button type="submit" class="danger" onclick="return confirm('Delete this SKU from the dropdown list?')">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="empty-state">No SKUs added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">Assignments</p>
+      <h2>Connect stores to the SKUs they carry</h2>
+    </div>
+    <form action="{{ url_for('add_store_sku') }}" method="post" class="catalog-grid">
+      <label>
+        Store
+        <select name="store_id" required>
+          <option value="" disabled selected>Select a store</option>
+          {% for store in stores %}
+          <option value="{{ store.id }}">{{ store.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        SKU
+        <select name="sku_id" required>
+          <option value="" disabled selected>Select an SKU</option>
+          {% for sku in skus %}
+          <option value="{{ sku.id }}">{{ sku.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Recommended shelf count
+        <input type="number" name="recommended_count" min="1" placeholder="24" required>
+      </label>
+      <div class="full-width actions">
+        <button type="submit">Save assignment</button>
+      </div>
+    </form>
+
+    <div class="manage-list">
+      {% for row in store_sku_rows %}
+      <div class="manage-item">
+        <span>{{ row.store_name }} - {{ row.sku_name }}</span>
+        <form action="{{ url_for('update_store_sku_recommended_count', assignment_id=row.id) }}" method="post" class="capacity-form">
+          <label>
+            Recommended
+            <input type="number" name="recommended_count" min="1" value="{{ row.recommended_count }}" required>
+          </label>
+          <button type="submit" class="compact-button">Save</button>
+        </form>
+        <form action="{{ url_for('delete_store_sku', assignment_id=row.id) }}" method="post">
+          <button type="submit" class="danger" onclick="return confirm('Remove this SKU from the store?')">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="empty-state">No store/SKU assignments yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}
