@@ -52,3 +52,98 @@ Main tables:
 - `skus`: active SKU names
 - `store_skus`: active store-to-SKU assignments with recommended shelf counts
 - `stock_visits`: historical shelf count and expiry count records
+
+## Important behavior notes
+
+- The app does not repopulate active stores/SKUs from old `stock_visits` on startup. This prevents deleted catalog items from reappearing after reload.
+- Historical visit records are preserved even when stores, SKUs, or assignments are removed from the active catalog.
+- Existing store/SKU mappings received a default recommended count of `10` when recommended counts were added.
+- Adding the same store/SKU assignment again from `/manage` updates its recommended count instead of creating a duplicate.
+- Inline dashboard saves create a new `stock_visits` row. The dashboard calculates current status from the latest visit for each store/SKU pair.
+
+## Key files
+
+- `app.py`: Flask routes, SQLite schema setup/migrations, and status rules
+- `templates/index.html`: dashboard UI, inline update form, and manager status note
+- `templates/manage.html`: store/SKU management and recommended count editing
+- `static/app.js`: inline dashboard AJAX saves and client-side filtering
+- `static/styles.css`: desktop, mobile, status, and card/table styling
+- `instance/stock_tracker.sqlite3`: local SQLite database
+
+## PythonAnywhere deployment
+
+The app is currently deployed on PythonAnywhere Free.
+
+Production URL:
+
+```text
+https://trujoescoffee.pythonanywhere.com
+```
+
+Production paths:
+
+```text
+Application code: /home/trujoescoffee/StoreSkuTracker
+SQLite database: /home/trujoescoffee/StoreSkuTracker/instance/stock_tracker.sqlite3
+Static files: /home/trujoescoffee/StoreSkuTracker/static
+Templates: /home/trujoescoffee/StoreSkuTracker/templates
+Virtualenv: /home/trujoescoffee/.virtualenvs/storesku
+```
+
+PythonAnywhere static files mapping:
+
+```text
+URL: /static/
+Directory: /home/trujoescoffee/StoreSkuTracker/static
+```
+
+PythonAnywhere WSGI configuration:
+
+```python
+import sys
+
+path = '/home/trujoescoffee/StoreSkuTracker'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+from app import app as application
+```
+
+Deployment steps used:
+
+1. Upload project ZIP to PythonAnywhere.
+2. Extract it into `/home/trujoescoffee/StoreSkuTracker`.
+3. Create a virtualenv named `storesku`.
+4. Install dependencies with `pip install -r requirements.txt`.
+5. Create a manual Flask web app from the PythonAnywhere Web tab.
+6. Set the virtualenv path to `/home/trujoescoffee/.virtualenvs/storesku`.
+7. Update the WSGI file with the configuration above.
+8. Add the `/static/` static files mapping.
+9. Click **Reload** in the PythonAnywhere Web tab.
+
+## Backup
+
+Because the free deployment uses SQLite, back up the database file periodically.
+
+Manual backup command on PythonAnywhere:
+
+```bash
+cp ~/StoreSkuTracker/instance/stock_tracker.sqlite3 ~/stock_tracker_backup.sqlite3
+```
+
+## Recommended next improvements
+
+- Add login/password protection before sharing the URL widely. Currently, anyone with the URL can edit data.
+- Move `SECRET_KEY` to an environment variable instead of keeping it hardcoded.
+- Add user roles later if managers and employees need different permissions.
+- Add automated database backups if this becomes business-critical.
+- If usage grows or many users update at the same time, consider moving from SQLite to MySQL/Postgres.
+- Clean up local-only files before long-term GitHub maintenance, especially `.venv`, `__pycache__`, and generated database copies.
+
+## Handoff PDF
+
+A developer handoff PDF is included in this repo:
+
+```text
+StoreSkuTracker_Developer_Handoff.pdf
+```

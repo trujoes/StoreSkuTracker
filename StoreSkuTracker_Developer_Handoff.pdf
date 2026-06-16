@@ -1,0 +1,170 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Length 3863 >>
+stream
+BT
+/F2 20 Tf 0.10 0.16 0.28 rg 1 0 0 1 72 760 Tm (StoreSkuTracker Developer Handoff) Tj
+/F1 10 Tf 0.38 0.38 0.38 rg 1 0 0 1 72 736 Tm (Prepared on 2026-06-16) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 707 Tm (Project Overview) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 688 Tm (StoreSkuTracker is a small Flask + SQLite web app used to track store-level SKU shelf) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 674 Tm (counts, expiring items, and current stock health.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 646 Tm (The app has two main pages: /dashboard for live stock updates and /manage for managing) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 632 Tm (stores, SKUs, and store-to-SKU assignments.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 604 Tm (The current production deployment is on PythonAnywhere Free under the account/site:) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 590 Tm (https://trujoescoffee.pythonanywhere.com) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 562 Tm (Current Tech Stack) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 543 Tm (- Backend: Flask in app.py) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 529 Tm (- Database: SQLite at instance/stock_tracker.sqlite3) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 515 Tm (- Frontend: Jinja templates in templates/, JavaScript in static/app.js, CSS in) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 501 Tm (  static/styles.css) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 487 Tm (- Deployment target: PythonAnywhere Free plan) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 473 Tm (- PythonAnywhere project path: /home/trujoescoffee/StoreSkuTracker) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 459 Tm (- PythonAnywhere virtualenv: /home/trujoescoffee/.virtualenvs/storesku) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 431 Tm (Main Features Implemented) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 412 Tm (- Dashboard shows current stock status for each active store/SKU assignment.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 398 Tm (- Employees can update shelf count and expiring count inline from the dashboard.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 384 Tm (- Manage page can add/delete stores and SKU names.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 370 Tm (- Manage page can assign SKUs to stores.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 356 Tm (- Each store/SKU assignment has a recommended shelf count.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 342 Tm (- Recommended shelf count can be edited directly from the assignment list.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 328 Tm (- Dashboard includes a manager-friendly note explaining all status and color conditions.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 314 Tm (- Dashboard and recent visits are mobile-friendly: on phones, tables become stacked cards.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 300 Tm (- Historical visit records are preserved even when stores/SKUs are removed from the active) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 286 Tm (  catalog.) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 258 Tm (Status and Color Rules) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 239 Tm (- Healthy: current shelf count is above 50% of the recommended count and no items are) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 225 Tm (  expiring.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 211 Tm (- Unhealthy: current shelf count is 20% to 50% of the recommended count and no items are) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 197 Tm (  expiring.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 183 Tm (- Critical: at least 1 item is expiring, shelf count is below 20%, no count exists, or) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 169 Tm (  last visit is older than 72 hours.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 155 Tm (- Rows with visits older than 72 hours are tinted red and marked Critical.) Tj
+/F1 8 Tf 0.45 0.45 0.45 rg 1 0 0 1 72 42 Tm (Page 1 of 3) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 3921 >>
+stream
+BT
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 760 Tm (Database Tables) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 741 Tm (- stores: active store list.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 727 Tm (- skus: active SKU list.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 713 Tm (- store_skus: active store-to-SKU mappings, including recommended_count.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 699 Tm (- stock_visits: historical visit/update records. This table stores store and SKU names as) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 685 Tm (  text so history remains readable after catalog changes.) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 657 Tm (Important Behavior Notes) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 638 Tm (- The app no longer repopulates active stores/SKUs from stock_visits on startup. This was) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 624 Tm (  fixed because deleted stores were reappearing after reload.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 610 Tm (- Existing store/SKU mappings received a default recommended_count of 10 when the) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 596 Tm (  migration was added.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 582 Tm (- Adding the same store/SKU mapping again from /manage updates its recommended count) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 568 Tm (  instead of creating a duplicate.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 554 Tm (- Inline dashboard saves create a new stock_visits row. The dashboard then calculates) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 540 Tm (  current status from the latest visit per store/SKU pair.) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 512 Tm (Local Development Commands) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 493 Tm (- Create virtualenv: python3 -m venv .venv) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 479 Tm (- Activate virtualenv: source .venv/bin/activate) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 465 Tm (- Install dependencies: pip install -r requirements.txt) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 451 Tm (- Run locally: python app.py) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 437 Tm (- Local URL: http://127.0.0.1:8001) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 423 Tm (- Syntax check used during development: .venv/bin/python -m py_compile app.py) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 395 Tm (PythonAnywhere Deployment Steps Completed) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 376 Tm (- Code was uploaded to PythonAnywhere via ZIP.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 362 Tm (- ZIP was extracted into /home/trujoescoffee/StoreSkuTracker.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 348 Tm (- Virtualenv storesku was created.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 334 Tm (- Dependencies were installed from requirements.txt.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 320 Tm (- A manual Flask web app was configured from the PythonAnywhere Web tab.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 306 Tm (- WSGI path was configured to import app from /home/trujoescoffee/StoreSkuTracker.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 292 Tm (- Static files mapping was configured: URL /static/ ->) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 278 Tm (  /home/trujoescoffee/StoreSkuTracker/static.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 264 Tm (- The app was reloaded and confirmed running at https://trujoescoffee.pythonanywhere.com.) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 236 Tm (PythonAnywhere WSGI Configuration) Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 217 Tm (import sys) Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 191 Tm (path = '/home/trujoescoffee/StoreSkuTracker') Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 178 Tm (if path not in sys.path:) Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 165 Tm (    sys.path.insert\(0, path\)) Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 139 Tm (from app import app as application) Tj
+/F1 8 Tf 0.45 0.45 0.45 rg 1 0 0 1 72 42 Tm (Page 2 of 3) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 3069 >>
+stream
+BT
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 760 Tm (Current Production Paths) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 741 Tm (- Application code: /home/trujoescoffee/StoreSkuTracker) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 727 Tm (- SQLite database: /home/trujoescoffee/StoreSkuTracker/instance/stock_tracker.sqlite3) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 713 Tm (- Static files: /home/trujoescoffee/StoreSkuTracker/static) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 699 Tm (- Templates: /home/trujoescoffee/StoreSkuTracker/templates) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 685 Tm (- Virtualenv: /home/trujoescoffee/.virtualenvs/storesku) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 657 Tm (Backup Guidance) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 638 Tm (Because the app uses SQLite on the PythonAnywhere Free plan, the database file should be) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 624 Tm (backed up periodically. A simple manual backup command is:) Tj
+/F3 9 Tf 0.12 0.12 0.12 rg 1 0 0 1 72 596 Tm (cp ~/StoreSkuTracker/instance/stock_tracker.sqlite3 ~/stock_tracker_backup.sqlite3) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 569 Tm (Recommended Next Improvements) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 550 Tm (- Add login/password protection before wider employee rollout. Currently anyone with the) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 536 Tm (  URL can edit data.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 522 Tm (- Move SECRET_KEY to an environment variable instead of hardcoding it.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 508 Tm (- Add user roles later if managers and employees should have different permissions.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 494 Tm (- For more users or heavier simultaneous updates, consider moving from SQLite to) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 480 Tm (  MySQL/Postgres.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 466 Tm (- Add automated database backups if this becomes business-critical.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 452 Tm (- Clean up committed local-only files such as .venv, __pycache__, and generated database) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 438 Tm (  copies before maintaining the GitHub repo.) Tj
+/F2 14 Tf 0.18 0.45 0.70 rg 1 0 0 1 72 410 Tm (Files Future Developer Should Review First) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 391 Tm (- app.py: Flask routes, SQLite schema, migrations, and status rules.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 377 Tm (- templates/index.html: dashboard UI and manager status note.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 363 Tm (- templates/manage.html: store/SKU management and recommended count editing.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 349 Tm (- static/app.js: inline dashboard AJAX save and client-side filtering.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 335 Tm (- static/styles.css: desktop, mobile, status, and card/table styling.) Tj
+/F1 10 Tf 0.08 0.08 0.08 rg 1 0 0 1 72 321 Tm (- README.md: run instructions and project summary.) Tj
+/F1 8 Tf 0.45 0.45 0.45 rg 1 0 0 1 72 42 Tm (Page 3 of 3) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 10 0 R >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000134 00000 n 
+0000000204 00000 n 
+0000000279 00000 n 
+0000000347 00000 n 
+0000004262 00000 n 
+0000004408 00000 n 
+0000008381 00000 n 
+0000008527 00000 n 
+0000011649 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+11797
+%%EOF
