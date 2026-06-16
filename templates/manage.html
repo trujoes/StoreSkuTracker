@@ -107,20 +107,44 @@
       </div>
     </form>
 
-    <div class="manage-list">
-      {% for row in store_sku_rows %}
-      <div class="manage-item">
-        <span>{{ row.store_name }} - {{ row.sku_name }}</span>
-        <form action="{{ url_for('update_store_sku_recommended_count', assignment_id=row.id) }}" method="post" class="capacity-form">
-          <label>
-            Recommended
-            <input type="number" name="recommended_count" min="1" value="{{ row.recommended_count }}" required>
-          </label>
-          <button type="submit" class="compact-button">Save</button>
-        </form>
-        <form action="{{ url_for('delete_store_sku', assignment_id=row.id) }}" method="post">
-          <button type="submit" class="danger" onclick="return confirm('Remove this SKU from the store?')">Delete</button>
-        </form>
+    <form method="get" class="store-filter">
+      <label>
+        Filter assignments by store
+        <select name="store_id" onchange="this.form.submit()">
+          <option value="">All stores</option>
+          {% for store in stores %}
+          <option value="{{ store.id }}" {{ 'selected' if selected_store_id == store.id|string else '' }}>{{ store.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+
+    <div class="assignment-list">
+      {% for group in assignment_groups %}
+      <div class="assignment-row">
+        <div class="assignment-store">
+          <span>{{ group.store.name }}</span>
+          <strong>{{ group.assignments|length }} SKU{{ '' if group.assignments|length == 1 else 's' }}</strong>
+        </div>
+        <div class="assignment-skus">
+          {% for row in group.assignments %}
+          <div class="assignment-sku">
+            <span class="sku-name">{{ row.sku_name }}</span>
+            <form action="{{ url_for('update_store_sku_recommended_count', assignment_id=row.id) }}" method="post" class="capacity-form">
+              <label>
+                Recommended
+                <input type="number" name="recommended_count" min="1" value="{{ row.recommended_count }}" required>
+              </label>
+              <button type="submit" class="compact-button">Save</button>
+            </form>
+            <form action="{{ url_for('delete_store_sku', assignment_id=row.id) }}" method="post">
+              <button type="submit" class="danger compact-button" onclick="return confirm('Remove this SKU from the store?')">Delete</button>
+            </form>
+          </div>
+          {% else %}
+          <p class="empty-state compact-empty">No SKU assignments for this store yet.</p>
+          {% endfor %}
+        </div>
       </div>
       {% else %}
       <p class="empty-state">No store/SKU assignments yet.</p>

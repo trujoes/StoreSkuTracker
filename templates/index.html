@@ -77,10 +77,10 @@
             <td data-label="SKU">{{ row.sku_name }}</td>
             <td data-label="Recommended">{{ row.recommended_count }}</td>
             <td data-label="Current">
-              <input class="inline-number" type="number" min="0" name="shelf_count" form="{{ row_form_id }}" value="{{ row.shelf_count if row.shelf_count is not none else '' }}" placeholder="0" required>
+              <input class="inline-number" type="number" min="0" name="shelf_count" form="{{ row_form_id }}" value="{{ row.shelf_count if row.shelf_count is not none else 0 }}" placeholder="0">
             </td>
             <td data-label="Expiring">
-              <input class="inline-number" type="number" min="0" name="expiring_count" form="{{ row_form_id }}" value="{{ row.expiring_count if row.expiring_count is not none else '' }}" placeholder="0" required>
+              <input class="inline-number" type="number" min="0" name="expiring_count" form="{{ row_form_id }}" value="{{ row.expiring_count if row.expiring_count is not none else 0 }}" placeholder="0">
             </td>
             <td data-label="Last visit">{{ row.last_visit | datetime_display }}</td>
             <td data-label="Status"><span class="status-pill status-{{ row.status|lower }}">{{ row.status }}</span></td>

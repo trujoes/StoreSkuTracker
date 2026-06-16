@@ -8,9 +8,12 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Set a recommended shelf count for each store/SKU assignment
 - Edit recommended shelf counts directly from the assignment list
 - Update shelf count and expiring count inline from the dashboard
+- Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - See summary totals and the latest visit history
+- Keep activity history for the last 7 days only
 - Add or remove stores, SKUs, and store/SKU assignments
+- View store/SKU assignments grouped by store, with a store-level filter
 - Preserve historical visit records even when catalog items are removed
 - Uses SQLite for local storage
 
@@ -34,7 +37,9 @@ The app has two main pages:
 - `/dashboard` shows the current shelf and expiry status for each configured store/SKU pair.
 - `/manage` lets you maintain the active store list, SKU list, and which SKUs each store carries.
 
-Dashboard updates create new records in `stock_visits`. The current status table is calculated from the latest visit for each store/SKU pair, so visit history is retained over time.
+Dashboard updates create new records in `stock_visits`. The current status table is calculated from the latest retained visit for each store/SKU pair.
+
+Activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves.
 
 Status rules:
 
@@ -57,9 +62,11 @@ Main tables:
 
 - The app does not repopulate active stores/SKUs from old `stock_visits` on startup. This prevents deleted catalog items from reappearing after reload.
 - Historical visit records are preserved even when stores, SKUs, or assignments are removed from the active catalog.
+- Visit records are retained for 7 days only; older activity is automatically pruned.
 - Existing store/SKU mappings received a default recommended count of `10` when recommended counts were added.
 - Adding the same store/SKU assignment again from `/manage` updates its recommended count instead of creating a duplicate.
 - Inline dashboard saves create a new `stock_visits` row. The dashboard calculates current status from the latest visit for each store/SKU pair.
+- Blank shelf count or expiring count inputs are saved as `0`.
 
 ## Key files
 
@@ -120,6 +127,55 @@ Deployment steps used:
 7. Update the WSGI file with the configuration above.
 8. Add the `/static/` static files mapping.
 9. Click **Reload** in the PythonAnywhere Web tab.
+
+## Updating PythonAnywhere from GitHub
+
+Use this flow after the PythonAnywhere folder has been switched to a GitHub clone.
+
+Before every update, back up the live SQLite database:
+
+```bash
+cd ~/StoreSkuTracker
+cp instance/stock_tracker.sqlite3 ~/stock_tracker_backup_$(date +%Y%m%d_%H%M%S).sqlite3
+```
+
+To deploy changes that have already been merged into `main`:
+
+```bash
+cd ~/StoreSkuTracker
+git checkout main
+git pull origin main
+workon storesku
+pip install -r requirements.txt
+```
+
+Then go to the PythonAnywhere **Web** tab and click **Reload**.
+
+To test a feature branch on PythonAnywhere before merging:
+
+```bash
+cd ~/StoreSkuTracker
+cp instance/stock_tracker.sqlite3 ~/stock_tracker_backup_$(date +%Y%m%d_%H%M%S).sqlite3
+git fetch origin
+git checkout BRANCH_NAME
+git pull origin BRANCH_NAME
+workon storesku
+pip install -r requirements.txt
+```
+
+Then click **Reload** in the PythonAnywhere **Web** tab.
+
+To return PythonAnywhere to production `main` after branch testing:
+
+```bash
+cd ~/StoreSkuTracker
+git checkout main
+git pull origin main
+```
+
+Then click **Reload** again.
+
+Important: do not overwrite the live production database from GitHub. The file `instance/stock_tracker.sqlite3` should stay ignored by Git and should be backed up separately.
 
 ## Backup
 

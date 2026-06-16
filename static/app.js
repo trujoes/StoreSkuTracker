@@ -40,6 +40,16 @@ async function submitFormAjax(formId) {
     return;
   }
 
+  const associatedNumberInputs = [
+    ...form.querySelectorAll('input[type="number"]'),
+    ...document.querySelectorAll(`input[type="number"][form="${formId}"]`),
+  ];
+  associatedNumberInputs.forEach((input) => {
+    if (String(input.value).trim() === '') {
+      input.value = '0';
+    }
+  });
+
   const payload = new FormData(form);
   const response = await fetch(form.action, {
     method: 'POST',

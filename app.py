@@ -16,6 +16,10 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "stock-tracker-local-dev"
 
 
+def cleanup_old_visits(connection: sqlite3.Connection) -> None:
+    connection.execute("DELETE FROM stock_visits WHERE datetime(created_at) < datetime('now', '-7 days')")
+
+
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
@@ -77,6 +81,7 @@ def init_db() -> None:
             connection.execute(
                 "ALTER TABLE store_skus ADD COLUMN recommended_count INTEGER NOT NULL DEFAULT 10 CHECK (recommended_count > 0)"
             )
+        cleanup_old_visits(connection)
         connection.commit()
     finally:
         connection.close()
@@ -206,9 +211,12 @@ def index():
 
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
+    db = get_db()
+    cleanup_old_visits(db)
+    db.commit()
     search = request.args.get("search", "").strip()
     current_status_rows = fetch_current_status_rows(search)
-    recent_visits = get_db().execute(
+    recent_visits = db.execute(
         """
         SELECT id, store_name, employee_name, sku, shelf_count, expiring_count, notes, created_at
         FROM stock_visits
@@ -216,17 +224,17 @@ def dashboard():
         LIMIT 10
         """
     ).fetchall()
-    stores = get_db().execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
-    skus = get_db().execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
+    stores = db.execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
+    skus = db.execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
 
     summary = {
-        "stores": get_db().execute("SELECT COUNT(*) FROM stores").fetchone()[0],
-        "records": get_db().execute("SELECT COUNT(*) FROM stock_visits").fetchone()[0],
+        "stores": db.execute("SELECT COUNT(*) FROM stores").fetchone()[0],
+        "records": db.execute("SELECT COUNT(*) FROM stock_visits").fetchone()[0],
         "shelf_total": sum((row["shelf_count"] or 0) for row in current_status_rows),
         "expiring_total": sum((row["expiring_count"] or 0) for row in current_status_rows),
         "stores_active": len(stores),
         "skus_active": len(skus),
-        "mapped_skus": get_db().execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
+        "mapped_skus": db.execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
     }
 
     return render_template(
@@ -257,18 +265,54 @@ def store_skus_api(store_id: int):
 
 @app.route("/manage", methods=["GET"])
 def manage():
+    selected_store_id = request.args.get("store_id", "").strip()
+    selected_store_id_value: int | None = None
+    if selected_store_id:
+        try:
+            selected_store_id_value = int(selected_store_id)
+        except ValueError:
+            selected_store_id_value = None
+
     stores = get_db().execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
     skus = get_db().execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
     store_sku_rows = get_db().execute(
         """
-        SELECT store_skus.id, stores.name AS store_name, skus.name AS sku_name, store_skus.recommended_count
+        SELECT
+            store_skus.id,
+            store_skus.store_id,
+            store_skus.sku_id,
+            stores.name AS store_name,
+            skus.name AS sku_name,
+            store_skus.recommended_count
         FROM store_skus
         JOIN stores ON stores.id = store_skus.store_id
         JOIN skus ON skus.id = store_skus.sku_id
         ORDER BY stores.name COLLATE NOCASE, skus.name COLLATE NOCASE
         """
     ).fetchall()
-    return render_template("manage.html", stores=stores, skus=skus, store_sku_rows=store_sku_rows)
+
+    assignments_by_store: dict[int, list[sqlite3.Row]] = {}
+    for row in store_sku_rows:
+        assignments_by_store.setdefault(row["store_id"], []).append(row)
+
+    assignment_groups = []
+    for store in stores:
+        if selected_store_id_value is not None and store["id"] != selected_store_id_value:
+            continue
+        assignment_groups.append(
+            {
+                "store": store,
+                "assignments": assignments_by_store.get(store["id"], []),
+            }
+        )
+
+    return render_template(
+        "manage.html",
+        stores=stores,
+        skus=skus,
+        assignment_groups=assignment_groups,
+        selected_store_id=selected_store_id,
+    )
 
 
 @app.route("/stores", methods=["POST"])
@@ -372,7 +416,7 @@ def record_visit():
     expiring_count = form.get("expiring_count", "").strip()
     notes = form.get("notes", "").strip()
 
-    if not store_id or not employee_name or not sku_id or not shelf_count or not expiring_count:
+    if not store_id or not employee_name or not sku_id:
         return redirect(url_for("dashboard"))
 
     db = get_db()
@@ -389,8 +433,8 @@ def record_visit():
         return redirect(url_for("dashboard"))
 
     try:
-        shelf_count_value = int(shelf_count)
-        expiring_count_value = int(expiring_count)
+        shelf_count_value = int(shelf_count or 0)
+        expiring_count_value = int(expiring_count or 0)
     except ValueError:
         return redirect(url_for("dashboard"))
 
@@ -404,6 +448,7 @@ def record_visit():
         """,
         (store_row["name"], employee_name, sku_row["name"], shelf_count_value, expiring_count_value, notes),
     )
+    cleanup_old_visits(db)
     db.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
