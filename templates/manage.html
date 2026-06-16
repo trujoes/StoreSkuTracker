@@ -18,6 +18,10 @@
       <span>Active SKUs</span>
       <strong>{{ skus|length }}</strong>
     </div>
+    <div class="stat">
+      <span>Active employees</span>
+      <strong>{{ employees|length }}</strong>
+    </div>
   </div>
 </section>
 
@@ -48,7 +52,7 @@
     </div>
   </article>
 
-  <article class="card list-card">
+  <article class="card list-card" id="employees">
     <div class="section-heading">
       <p class="eyebrow">SKUs</p>
       <h2>SKU list</h2>
@@ -74,15 +78,41 @@
     </div>
   </article>
 
-  <article class="card list-card full-span">
+  <article class="card list-card">
+    <div class="section-heading">
+      <p class="eyebrow">Employees</p>
+      <h2>Employee list</h2>
+    </div>
+    <form action="{{ url_for('add_employee') }}" method="post" class="catalog-form">
+      <label>
+        Employee name
+        <input type="text" name="name" placeholder="Rahul Sharma" required>
+      </label>
+      <button type="submit">Add employee</button>
+    </form>
+    <div class="manage-list">
+      {% for employee in employees %}
+      <div class="manage-item">
+        <span>{{ employee.name }}</span>
+        <form action="{{ url_for('delete_employee', employee_id=employee.id) }}" method="post">
+          <button type="submit" class="danger" onclick="return confirm('Delete this employee from the dropdown list?')">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="empty-state">No employees added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card full-span" id="assignments">
     <div class="section-heading">
       <p class="eyebrow">Assignments</p>
       <h2>Connect stores to the SKUs they carry</h2>
     </div>
-    <form action="{{ url_for('add_store_sku') }}" method="post" class="catalog-grid">
+    <form action="{{ url_for('add_store_sku') }}" method="post" class="catalog-grid assignment-scroll-form">
       <label>
         Store
-        <select name="store_id" required>
+        <select name="store_id" class="assignment-store-select" required>
           <option value="" disabled selected>Select a store</option>
           {% for store in stores %}
           <option value="{{ store.id }}">{{ store.name }}</option>
@@ -91,7 +121,7 @@
       </label>
       <label>
         SKU
-        <select name="sku_id" required>
+        <select name="sku_id" class="assignment-sku-select" required>
           <option value="" disabled selected>Select an SKU</option>
           {% for sku in skus %}
           <option value="{{ sku.id }}">{{ sku.name }}</option>
@@ -107,7 +137,7 @@
       </div>
     </form>
 
-    <form method="get" class="store-filter">
+    <form method="get" class="store-filter assignment-scroll-form">
       <label>
         Filter assignments by store
         <select name="store_id" onchange="this.form.submit()">
@@ -130,14 +160,14 @@
           {% for row in group.assignments %}
           <div class="assignment-sku">
             <span class="sku-name">{{ row.sku_name }}</span>
-            <form action="{{ url_for('update_store_sku_recommended_count', assignment_id=row.id) }}" method="post" class="capacity-form">
+            <form action="{{ url_for('update_store_sku_recommended_count', assignment_id=row.id) }}" method="post" class="capacity-form assignment-scroll-form">
               <label>
                 Recommended
                 <input type="number" name="recommended_count" min="1" value="{{ row.recommended_count }}" required>
               </label>
               <button type="submit" class="compact-button">Save</button>
             </form>
-            <form action="{{ url_for('delete_store_sku', assignment_id=row.id) }}" method="post">
+            <form action="{{ url_for('delete_store_sku', assignment_id=row.id) }}" method="post" class="assignment-scroll-form">
               <button type="submit" class="danger compact-button" onclick="return confirm('Remove this SKU from the store?')">Delete</button>
             </form>
           </div>
@@ -152,4 +182,67 @@
     </div>
   </article>
 </section>
+
+<script>
+  const assignedSkuIdsByStore = {{ assigned_sku_ids_by_store | tojson }};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedAssignmentScrollY = sessionStorage.getItem('assignmentScrollY');
+    if (savedAssignmentScrollY !== null) {
+      sessionStorage.removeItem('assignmentScrollY');
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, Number(savedAssignmentScrollY));
+      });
+    }
+
+    document.querySelectorAll('.assignment-scroll-form').forEach((form) => {
+      form.addEventListener('submit', () => {
+        sessionStorage.setItem('assignmentScrollY', String(window.scrollY));
+      });
+    });
+
+    const storeSelect = document.querySelector('.assignment-store-select');
+    const skuSelect = document.querySelector('.assignment-sku-select');
+    if (!storeSelect || !skuSelect) {
+      return;
+    }
+
+    const originalSkuOptions = Array.from(skuSelect.options).map((option) => ({
+      text: option.text,
+      value: option.value,
+      disabled: option.disabled,
+      selected: option.selected,
+    }));
+
+    function refreshSkuOptions() {
+      const selectedStoreId = storeSelect.value;
+      if (!selectedStoreId) {
+        skuSelect.innerHTML = '';
+        skuSelect.add(new Option('Select a store first', '', true, true));
+        skuSelect.options[0].disabled = true;
+        skuSelect.disabled = true;
+        return;
+      }
+
+      skuSelect.disabled = false;
+      const mappedSkuIds = new Set((assignedSkuIdsByStore[selectedStoreId] || []).map(String));
+      const availableOptions = originalSkuOptions.filter((option) => !option.value || !mappedSkuIds.has(option.value));
+
+      skuSelect.innerHTML = '';
+      availableOptions.forEach((option) => {
+        skuSelect.add(new Option(option.text, option.value, option.selected, option.selected));
+        const addedOption = skuSelect.options[skuSelect.options.length - 1];
+        addedOption.disabled = option.disabled;
+      });
+
+      if (selectedStoreId && availableOptions.length === 1) {
+        skuSelect.add(new Option('All SKUs already mapped', '', true, true));
+        skuSelect.options[skuSelect.options.length - 1].disabled = true;
+      }
+    }
+
+    storeSelect.addEventListener('change', refreshSkuOptions);
+    refreshSkuOptions();
+  });
+</script>
 {% endblock %}

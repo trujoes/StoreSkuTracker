@@ -10,6 +10,8 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Update shelf count and expiring count inline from the dashboard
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
+- Filter the dashboard by store using a dropdown
+- Show relative last-visit timing in the live status table
 - See summary totals and the latest visit history
 - Keep activity history for the last 7 days only
 - Add or remove stores, SKUs, and store/SKU assignments
@@ -38,6 +40,8 @@ The app has two main pages:
 - `/manage` lets you maintain the active store list, SKU list, and which SKUs each store carries.
 
 Dashboard updates create new records in `stock_visits`. The current status table is calculated from the latest retained visit for each store/SKU pair.
+
+The live status table shows last visit as relative time, such as `2 days 3 hours`. The recent visits history still shows the full date and time.
 
 Activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves.
 

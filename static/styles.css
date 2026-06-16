@@ -262,7 +262,7 @@ button:hover {
 
 .search-bar {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr minmax(12rem, 0.35fr) auto;
   gap: 0.8rem;
   margin-bottom: 1rem;
 }
@@ -271,7 +271,7 @@ button:hover {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.8rem;
-  margin: 0 0 1rem;
+  margin: 1rem 0 0;
 }
 
 .status-note-item {
@@ -446,7 +446,15 @@ button:hover {
 
 .inline-status-form {
   display: flex;
+  align-items: center;
+  gap: 0.6rem;
   justify-content: flex-end;
+}
+
+.inline-status-form select {
+  min-width: 10rem;
+  padding: 0.72rem 0.85rem;
+  border-radius: 14px;
 }
 
 .inline-number {
@@ -694,7 +702,12 @@ tbody tr.stale-row:hover {
   }
 
   .inline-status-form {
+    display: grid;
     justify-content: stretch;
+  }
+
+  .inline-status-form select {
+    min-width: 0;
   }
 
   .inline-save {

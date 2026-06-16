@@ -51,6 +51,14 @@ def init_db() -> None:
         )
         connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS employees (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE
+            )
+            """
+        )
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS stock_visits (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 store_name TEXT NOT NULL,
@@ -105,6 +113,43 @@ def datetime_display(value: str) -> str:
     return parsed.strftime("%b %d, %Y %I:%M %p")
 
 
+def relative_time_display(value: str | None) -> str:
+    if not value:
+        return "No visit"
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    delta = now - parsed
+    if delta.total_seconds() < 0:
+        return "Just now"
+
+    days = delta.days
+    hours = delta.seconds // 3600
+    minutes = (delta.seconds % 3600) // 60
+
+    if days:
+        day_label = "day" if days == 1 else "days"
+        if hours:
+            hour_label = "hour" if hours == 1 else "hours"
+            return f"{days} {day_label} {hours} {hour_label} ago"
+        return f"{days} {day_label} ago"
+    if hours:
+        hour_label = "hour" if hours == 1 else "hours"
+        return f"{hours} {hour_label} ago"
+    if minutes:
+        minute_label = "minute" if minutes == 1 else "minutes"
+        return f"{minutes} {minute_label} ago"
+    return "Just now"
+
+
+@app.template_filter("relative_time_display")
+def relative_time_display_filter(value: str) -> str:
+    return relative_time_display(value)
+
+
 def is_visit_stale(last_visit: str | None) -> bool:
     if not last_visit:
         return True
@@ -135,7 +180,7 @@ def get_status(
     return "Healthy"
 
 
-def fetch_current_status_rows(search: str = "") -> list[sqlite3.Row]:
+def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> list[sqlite3.Row]:
     query = """
         WITH latest_visits AS (
             SELECT
@@ -170,10 +215,16 @@ def fetch_current_status_rows(search: str = "") -> list[sqlite3.Row]:
             AND latest_visits.sku = skus.name
     """
     params: list[str] = []
+    where_clauses: list[str] = []
     if search:
-        query += " WHERE stores.name LIKE ? OR skus.name LIKE ? OR latest_visits.employee_name LIKE ?"
+        where_clauses.append("(stores.name LIKE ? OR skus.name LIKE ? OR latest_visits.employee_name LIKE ?)")
         like_term = f"%{search}%"
         params.extend([like_term, like_term, like_term])
+    if store_id is not None:
+        where_clauses.append("stores.id = ?")
+        params.append(str(store_id))
+    if where_clauses:
+        query += " WHERE " + " AND ".join(where_clauses)
     query += " ORDER BY stores.name COLLATE NOCASE, skus.name COLLATE NOCASE"
 
     rows = get_db().execute(query, params).fetchall()
@@ -197,6 +248,7 @@ def fetch_current_status_rows(search: str = "") -> list[sqlite3.Row]:
                 "shelf_count": row["shelf_count"],
                 "expiring_count": row["expiring_count"],
                 "last_visit": row["created_at"],
+                "last_visit_display": relative_time_display(row["created_at"]),
                 "is_stale": stale_visit,
                 "status": status,
             }
@@ -215,7 +267,14 @@ def dashboard():
     cleanup_old_visits(db)
     db.commit()
     search = request.args.get("search", "").strip()
-    current_status_rows = fetch_current_status_rows(search)
+    selected_store_id = request.args.get("store_id", "").strip()
+    selected_store_id_value: int | None = None
+    if selected_store_id:
+        try:
+            selected_store_id_value = int(selected_store_id)
+        except ValueError:
+            selected_store_id_value = None
+    current_status_rows = fetch_current_status_rows(search, selected_store_id_value)
     recent_visits = db.execute(
         """
         SELECT id, store_name, employee_name, sku, shelf_count, expiring_count, notes, created_at
@@ -226,10 +285,10 @@ def dashboard():
     ).fetchall()
     stores = db.execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
     skus = db.execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
+    employees = db.execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()
 
     summary = {
         "stores": db.execute("SELECT COUNT(*) FROM stores").fetchone()[0],
-        "records": db.execute("SELECT COUNT(*) FROM stock_visits").fetchone()[0],
         "shelf_total": sum((row["shelf_count"] or 0) for row in current_status_rows),
         "expiring_total": sum((row["expiring_count"] or 0) for row in current_status_rows),
         "stores_active": len(stores),
@@ -245,6 +304,8 @@ def dashboard():
         search=search,
         stores=stores,
         skus=skus,
+        employees=employees,
+        selected_store_id=selected_store_id,
     )
 
 
@@ -275,6 +336,7 @@ def manage():
 
     stores = get_db().execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
     skus = get_db().execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
+    employees = get_db().execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()
     store_sku_rows = get_db().execute(
         """
         SELECT
@@ -295,6 +357,11 @@ def manage():
     for row in store_sku_rows:
         assignments_by_store.setdefault(row["store_id"], []).append(row)
 
+    assigned_sku_ids_by_store = {
+        str(store_id): [row["sku_id"] for row in rows]
+        for store_id, rows in assignments_by_store.items()
+    }
+
     assignment_groups = []
     for store in stores:
         if selected_store_id_value is not None and store["id"] != selected_store_id_value:
@@ -310,7 +377,9 @@ def manage():
         "manage.html",
         stores=stores,
         skus=skus,
+        employees=employees,
         assignment_groups=assignment_groups,
+        assigned_sku_ids_by_store=assigned_sku_ids_by_store,
         selected_store_id=selected_store_id,
     )
 
@@ -353,6 +422,24 @@ def delete_sku(sku_id: int):
     return redirect(url_for("manage"))
 
 
+@app.route("/employees", methods=["POST"])
+def add_employee():
+    name = request.form.get("name", "").strip()
+    if name:
+        db = get_db()
+        db.execute("INSERT OR IGNORE INTO employees (name) VALUES (?)", (name,))
+        db.commit()
+    return redirect(url_for("manage", _anchor="employees"))
+
+
+@app.route("/employees/<int:employee_id>/delete", methods=["POST"])
+def delete_employee(employee_id: int):
+    db = get_db()
+    db.execute("DELETE FROM employees WHERE id = ?", (employee_id,))
+    db.commit()
+    return redirect(url_for("manage", _anchor="employees"))
+
+
 @app.route("/store-skus", methods=["POST"])
 def add_store_sku():
     store_id = request.form.get("store_id", "").strip()
@@ -362,9 +449,9 @@ def add_store_sku():
         try:
             recommended_count_value = int(recommended_count)
         except ValueError:
-            return redirect(url_for("manage"))
+            return redirect(url_for("manage", _anchor="assignments"))
         if recommended_count_value <= 0:
-            return redirect(url_for("manage"))
+            return redirect(url_for("manage", _anchor="assignments"))
 
         db = get_db()
         db.execute(
@@ -376,7 +463,7 @@ def add_store_sku():
             (int(store_id), int(sku_id), recommended_count_value),
         )
         db.commit()
-    return redirect(url_for("manage"))
+    return redirect(url_for("manage", _anchor="assignments"))
 
 
 @app.route("/store-skus/<int:assignment_id>/delete", methods=["POST"])
@@ -384,7 +471,7 @@ def delete_store_sku(assignment_id: int):
     db = get_db()
     db.execute("DELETE FROM store_skus WHERE id = ?", (assignment_id,))
     db.commit()
-    return redirect(url_for("manage"))
+    return redirect(url_for("manage", _anchor="assignments"))
 
 
 @app.route("/store-skus/<int:assignment_id>/recommended-count", methods=["POST"])
@@ -393,9 +480,9 @@ def update_store_sku_recommended_count(assignment_id: int):
     try:
         recommended_count_value = int(recommended_count)
     except ValueError:
-        return redirect(url_for("manage"))
+        return redirect(url_for("manage", _anchor="assignments"))
     if recommended_count_value <= 0:
-        return redirect(url_for("manage"))
+        return redirect(url_for("manage", _anchor="assignments"))
 
     db = get_db()
     db.execute(
@@ -403,26 +490,39 @@ def update_store_sku_recommended_count(assignment_id: int):
         (recommended_count_value, assignment_id),
     )
     db.commit()
-    return redirect(url_for("manage"))
+    return redirect(url_for("manage", _anchor="assignments"))
 
 
 @app.route("/record", methods=["POST"])
 def record_visit():
     form = request.form
     store_id = form.get("store_id", "").strip()
+    employee_id = form.get("employee_id", "").strip()
     employee_name = form.get("employee_name", "").strip()
     sku_id = form.get("sku_id", "").strip()
     shelf_count = form.get("shelf_count", "").strip()
     expiring_count = form.get("expiring_count", "").strip()
     notes = form.get("notes", "").strip()
 
-    if not store_id or not employee_name or not sku_id:
+    if not store_id or not sku_id:
         return redirect(url_for("dashboard"))
 
     db = get_db()
     store_row = db.execute("SELECT id, name FROM stores WHERE id = ?", (int(store_id),)).fetchone()
     sku_row = db.execute("SELECT id, name FROM skus WHERE id = ?", (int(sku_id),)).fetchone()
     if store_row is None or sku_row is None:
+        return redirect(url_for("dashboard"))
+
+    if employee_id:
+        try:
+            employee_id_value = int(employee_id)
+        except ValueError:
+            return redirect(url_for("dashboard"))
+        employee_row = db.execute("SELECT id, name FROM employees WHERE id = ?", (employee_id_value,)).fetchone()
+        if employee_row is None:
+            return redirect(url_for("dashboard"))
+        employee_name = employee_row["name"]
+    if not employee_name:
         return redirect(url_for("dashboard"))
 
     mapping_exists = db.execute(
@@ -461,7 +561,6 @@ def record_visit():
         )
         summary = {
             "stores": get_db().execute("SELECT COUNT(*) FROM stores").fetchone()[0],
-            "records": get_db().execute("SELECT COUNT(*) FROM stock_visits").fetchone()[0],
             "shelf_total": sum((row["shelf_count"] or 0) for row in current_status_rows),
             "expiring_total": sum((row["expiring_count"] or 0) for row in current_status_rows),
             "stores_active": get_db().execute("SELECT COUNT(*) FROM stores").fetchone()[0],
