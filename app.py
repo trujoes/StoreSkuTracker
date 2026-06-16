@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import calendar
 import os
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import Flask, g, jsonify, redirect, render_template, request, url_for
 
@@ -78,7 +80,23 @@ def init_db() -> None:
                 store_id INTEGER NOT NULL,
                 sku_id INTEGER NOT NULL,
                 recommended_count INTEGER NOT NULL DEFAULT 10 CHECK (recommended_count > 0),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(store_id, sku_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS monthly_store_visits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id INTEGER,
+                store_name TEXT NOT NULL,
+                employee_name TEXT NOT NULL,
+                visit_date TEXT NOT NULL,
+                month_key TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(store_name, visit_date)
             )
             """
         )
@@ -88,6 +106,29 @@ def init_db() -> None:
         if "recommended_count" not in store_sku_columns:
             connection.execute(
                 "ALTER TABLE store_skus ADD COLUMN recommended_count INTEGER NOT NULL DEFAULT 10 CHECK (recommended_count > 0)"
+            )
+        if "created_at" not in store_sku_columns:
+            connection.execute("ALTER TABLE store_skus ADD COLUMN created_at TEXT")
+            connection.execute("UPDATE store_skus SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+        coverage_count = connection.execute("SELECT COUNT(*) FROM monthly_store_visits").fetchone()[0]
+        if coverage_count == 0:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO monthly_store_visits (
+                    store_id, store_name, employee_name, visit_date, month_key, created_at, updated_at
+                )
+                SELECT
+                    stores.id,
+                    stock_visits.store_name,
+                    stock_visits.employee_name,
+                    date(stock_visits.created_at),
+                    strftime('%Y-%m', stock_visits.created_at),
+                    MIN(stock_visits.created_at),
+                    MAX(stock_visits.created_at)
+                FROM stock_visits
+                LEFT JOIN stores ON stores.name = stock_visits.store_name
+                GROUP BY stock_visits.store_name, date(stock_visits.created_at)
+                """
             )
         cleanup_old_visits(connection)
         connection.commit()
@@ -151,14 +192,24 @@ def relative_time_display_filter(value: str) -> str:
 
 
 def is_visit_stale(last_visit: str | None) -> bool:
-    if not last_visit:
+    return is_older_than_hours(last_visit, 72)
+
+
+def is_visit_overdue(last_visit: str | None, mapping_created_at: str | None) -> bool:
+    if last_visit:
+        return is_older_than_hours(last_visit, 72)
+    return is_older_than_hours(mapping_created_at, 72)
+
+
+def is_older_than_hours(value: str | None, hours: int) -> bool:
+    if not value:
         return True
     try:
-        parsed = datetime.fromisoformat(last_visit)
+        parsed = datetime.fromisoformat(value)
     except (TypeError, ValueError):
         return True
     now = datetime.now(UTC).replace(tzinfo=None)
-    return now - parsed > timedelta(hours=72)
+    return now - parsed > timedelta(hours=hours)
 
 
 def get_status(
@@ -166,18 +217,198 @@ def get_status(
     expiring_count: int | None,
     recommended_count: int,
     last_visit: str | None,
+    mapping_created_at: str | None,
 ) -> str:
+    if not last_visit:
+        if is_older_than_hours(mapping_created_at, 72):
+            return "Critical"
+        return "Unhealthy"
+
+    if expiring_count is not None and expiring_count >= 1:
+        return "Critical"
+
+    if is_older_than_hours(last_visit, 72):
+        return "Critical"
     if shelf_count is None or expiring_count is None:
-        return "Critical"
-    if expiring_count >= 1:
-        return "Critical"
-    if is_visit_stale(last_visit):
-        return "Critical"
+        return "Unhealthy"
     if shelf_count < recommended_count * 0.2:
         return "Critical"
+    if is_older_than_hours(last_visit, 48):
+        return "Unhealthy"
     if shelf_count <= recommended_count * 0.5:
         return "Unhealthy"
     return "Healthy"
+
+
+def record_monthly_store_visit(db: sqlite3.Connection, store_id: int, store_name: str, employee_name: str) -> None:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    visit_date = now.strftime("%Y-%m-%d")
+    month_key = now.strftime("%Y-%m")
+    db.execute(
+        """
+        INSERT INTO monthly_store_visits (
+            store_id, store_name, employee_name, visit_date, month_key, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(store_name, visit_date) DO UPDATE SET
+            store_id = excluded.store_id,
+            employee_name = excluded.employee_name,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (store_id, store_name, employee_name, visit_date, month_key),
+    )
+
+
+def get_monthly_visit_performance() -> dict:
+    db = get_db()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    month_key = now.strftime("%Y-%m")
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    expected_by_today_per_store = max(1, ((now.day - 1) // 3) + 1)
+    expected_full_month_per_store = (days_in_month + 2) // 3
+    stores = db.execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
+    visit_rows = db.execute(
+        """
+        SELECT store_name, COUNT(*) AS visit_count
+        FROM monthly_store_visits
+        WHERE month_key = ?
+        GROUP BY store_name
+        """,
+        (month_key,),
+    ).fetchall()
+    visits_by_store = {row["store_name"]: row["visit_count"] for row in visit_rows}
+    store_rows = []
+    for store in stores:
+        visits_made = visits_by_store.get(store["name"], 0)
+        completion_percent = round((visits_made / expected_by_today_per_store) * 100)
+        remaining_to_pace = max(expected_by_today_per_store - visits_made, 0)
+        store_rows.append(
+            {
+                "store_name": store["name"],
+                "visits_made": visits_made,
+                "expected_by_today": expected_by_today_per_store,
+                "expected_full_month": expected_full_month_per_store,
+                "completion_percent": completion_percent,
+                "remaining_to_pace": remaining_to_pace,
+                "status": "On track" if remaining_to_pace == 0 else "Behind plan",
+            }
+        )
+    store_rows.sort(key=lambda row: (row["remaining_to_pace"] == 0, row["store_name"].lower()))
+    employee_rows = db.execute(
+        """
+        SELECT employee_name, COUNT(*) AS visit_count
+        FROM monthly_store_visits
+        WHERE month_key = ?
+        GROUP BY employee_name
+        ORDER BY visit_count DESC, employee_name COLLATE NOCASE
+        """,
+        (month_key,),
+    ).fetchall()
+    return {
+        "month_label": now.strftime("%B %Y"),
+        "store_count": len(stores),
+        "store_rows": store_rows,
+        "employee_rows": employee_rows,
+    }
+
+
+def build_critical_report(rows: list[dict], visit_performance: dict | None = None) -> tuple[str, str]:
+    generated_at = datetime.now().strftime("%b %d, %Y %I:%M %p")
+    if visit_performance is None:
+        visit_performance = get_monthly_visit_performance()
+    expiring_rows = [row for row in rows if (row["expiring_count"] or 0) >= 1]
+    stale_store_rows = {}
+    for row in rows:
+        if not row["is_stale"]:
+            continue
+        current_row = stale_store_rows.get(row["store_id"])
+        if current_row is None or str(row["last_visit"] or "") > str(current_row["last_visit"] or ""):
+            stale_store_rows[row["store_id"]] = row
+
+    subject = f"Daily Stock Action Report - {datetime.now().strftime('%d %b %Y')}"
+    lines = [
+        "Daily Stock Action Report",
+        f"Generated: {generated_at}",
+        "",
+        "1. Expiring items",
+    ]
+
+    if expiring_rows:
+        lines.append(f"{len(expiring_rows)} item(s) need expiry action:")
+        lines.append("")
+        for index, row in enumerate(expiring_rows, start=1):
+            lines.extend(
+                [
+                    f"{index}. {row['store_name']} - {row['sku_name']}",
+                    f"   Expiring: {row['expiring_count']}",
+                    f"   Current shelf count: {row['shelf_count'] if row['shelf_count'] is not None else 0}",
+                    f"   Last visit: {row['last_visit_display']}",
+                    f"   Last visit made by: {row['employee_name'] or 'No visit'}",
+                    "   Action: Remove or replace expiring items",
+                    "",
+                ]
+            )
+    else:
+        lines.append("No expiring items currently.")
+        lines.append("")
+
+    lines.append("2. Stores not visited in 72 hours")
+    stale_rows = sorted(stale_store_rows.values(), key=lambda row: row["store_name"].lower())
+    if stale_rows:
+        lines.append(f"{len(stale_rows)} store(s) need a visit:")
+        lines.append("")
+        for index, row in enumerate(stale_rows, start=1):
+            lines.extend(
+                [
+                    f"{index}. {row['store_name']}",
+                    f"   Last visit: {row['last_visit_display']}",
+                    f"   Last visit made by: {row['employee_name'] or 'No visit'}",
+                    "   Action: Visit store and update shelf count",
+                    "",
+                ]
+            )
+    else:
+        lines.append("All stores have been visited within the last 72 hours.")
+        lines.append("")
+
+    lines.extend(
+        [
+            "3. Monthly visit deadline performance by store",
+            f"Month: {visit_performance['month_label']}",
+            f"Stores tracked: {visit_performance['store_count']}",
+            "",
+        ]
+    )
+    if visit_performance["store_rows"]:
+        for row in visit_performance["store_rows"]:
+            lines.extend(
+                [
+                    f"- {row['store_name']}: {row['visits_made']}/{row['expected_by_today']} visits by today ({row['completion_percent']}%) - {row['status']}",
+                    f"  Full month target: {row['expected_full_month']} visits",
+                ]
+            )
+            if row["remaining_to_pace"]:
+                lines.append(f"  Action: Complete {row['remaining_to_pace']} more visit(s) for this store to catch up.")
+            else:
+                lines.append("  Action: Maintain current visit pace.")
+    else:
+        lines.append("No active stores configured.")
+    lines.append("")
+
+    lines.append("4. Employee visit contribution this month")
+    if visit_performance["employee_rows"]:
+        for row in visit_performance["employee_rows"]:
+            lines.append(f"- {row['employee_name']}: {row['visit_count']} store visit(s)")
+    else:
+        lines.append("No monthly store visits recorded yet.")
+    lines.append("")
+
+    return subject, "\n".join(lines)
+
+
+def build_mailto_url(subject: str, body: str) -> str:
+    recipient = os.environ.get("CRITICAL_REPORT_TO_EMAIL", "").strip()
+    return f"mailto:{quote(recipient)}?subject={quote(subject)}&body={quote(body)}"
 
 
 def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> list[sqlite3.Row]:
@@ -202,6 +433,7 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
             skus.id AS sku_id,
             skus.name AS sku_name,
             store_skus.recommended_count,
+            store_skus.created_at AS mapping_created_at,
             latest_visits.employee_name,
             latest_visits.shelf_count,
             latest_visits.expiring_count,
@@ -230,12 +462,13 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
     rows = get_db().execute(query, params).fetchall()
     current_status_rows: list[sqlite3.Row] = []
     for row in rows:
-        stale_visit = is_visit_stale(row["created_at"])
+        stale_visit = is_visit_overdue(row["created_at"], row["mapping_created_at"])
         status = get_status(
             row["shelf_count"],
             row["expiring_count"],
             row["recommended_count"],
             row["created_at"],
+            row["mapping_created_at"],
         )
         current_status_rows.append(
             {
@@ -244,6 +477,7 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
                 "sku_id": row["sku_id"],
                 "sku_name": row["sku_name"],
                 "recommended_count": row["recommended_count"],
+                "mapping_created_at": row["mapping_created_at"],
                 "employee_name": row["employee_name"],
                 "shelf_count": row["shelf_count"],
                 "expiring_count": row["expiring_count"],
@@ -295,12 +529,14 @@ def dashboard():
         "skus_active": len(skus),
         "mapped_skus": db.execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
     }
+    critical_report_subject, critical_report_body = build_critical_report(current_status_rows)
 
     return render_template(
         "index.html",
         current_status_rows=current_status_rows,
         recent_visits=recent_visits,
         summary=summary,
+        critical_report_mailto=build_mailto_url(critical_report_subject, critical_report_body),
         search=search,
         stores=stores,
         skus=skus,
@@ -548,6 +784,7 @@ def record_visit():
         """,
         (store_row["name"], employee_name, sku_row["name"], shelf_count_value, expiring_count_value, notes),
     )
+    record_monthly_store_visit(db, store_row["id"], store_row["name"], employee_name)
     cleanup_old_visits(db)
     db.commit()
 
@@ -567,11 +804,13 @@ def record_visit():
             "skus_active": get_db().execute("SELECT COUNT(*) FROM skus").fetchone()[0],
             "mapped_skus": get_db().execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
         }
+        critical_report_subject, critical_report_body = build_critical_report(current_status_rows)
         return jsonify(
             {
                 "ok": True,
                 "row": updated_row,
                 "summary": summary,
+                "critical_report_mailto": build_mailto_url(critical_report_subject, critical_report_body),
             }
         )
     return redirect(url_for("dashboard"))

@@ -27,9 +27,12 @@
 
 <section class="dashboard-layout">
   <article class="card list-card">
-    <div class="section-heading">
-      <p class="eyebrow">Current Status</p>
-      <h2>Live stock by store and SKU</h2>
+    <div class="section-heading section-heading-actions">
+      <div>
+        <p class="eyebrow">Current Status</p>
+        <h2>Live stock by store and SKU</h2>
+      </div>
+      <a class="button-link report-button" href="{{ critical_report_mailto }}" data-critical-report-link>Email action report</a>
     </div>
     <form method="get" class="search-bar">
       <input type="text" name="search" value="{{ search }}" placeholder="Filter by store, SKU, or employee">
@@ -100,15 +103,15 @@
     <div class="status-note" aria-label="Status color conditions">
       <div class="status-note-item">
         <span class="status-pill status-healthy">Healthy</span>
-        <p>Current shelf count is above 50% of the recommended count and no items are expiring.</p>
+        <p>Shelf count is above 50%, no items are expiring, and the latest visit is within 48 hours.</p>
       </div>
       <div class="status-note-item">
         <span class="status-pill status-unhealthy">Unhealthy</span>
-        <p>Current shelf count is 20% to 50% of the recommended count and no items are expiring.</p>
+        <p>Early warning: shelf count is 20% to 50%, latest visit is 48 to 72 hours old, or a new mapping has not been visited yet.</p>
       </div>
       <div class="status-note-item">
         <span class="status-pill status-critical">Critical</span>
-        <p>At least 1 item is expiring, shelf count is below 20%, no count exists, or last visit is older than 72 hours.</p>
+        <p>Immediate action: at least 1 item is expiring, shelf count is below 20%, or the store has not been visited for more than 72 hours.</p>
       </div>
     </div>
   </article>

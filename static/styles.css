@@ -192,6 +192,13 @@ h2 {
   margin-bottom: 1.1rem;
 }
 
+.section-heading-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -254,6 +261,24 @@ button {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   box-shadow: 0 12px 24px rgba(155, 28, 28, 0.25);
   cursor: pointer;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.92rem 1.3rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 12px 24px rgba(155, 28, 28, 0.25);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.report-button {
+  flex: 0 0 auto;
 }
 
 button:hover {
@@ -604,6 +629,10 @@ tbody tr.stale-row:hover {
     line-height: 1.55;
   }
 
+  .section-heading-actions {
+    display: grid;
+  }
+
   .hero-stats,
   .form-grid,
   .catalog-grid,
@@ -755,6 +784,10 @@ tbody tr.stale-row:hover {
   }
 
   button {
+    width: 100%;
+  }
+
+  .button-link {
     width: 100%;
   }
 }

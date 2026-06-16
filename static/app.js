@@ -74,6 +74,10 @@ async function submitFormAjax(formId) {
 
   const data = await response.json();
   updateSummary(data.summary);
+  const criticalReportLink = document.querySelector('[data-critical-report-link]');
+  if (criticalReportLink && data.critical_report_mailto) {
+    criticalReportLink.href = data.critical_report_mailto;
+  }
   updateStatusRow(formId, data.row);
 }
 

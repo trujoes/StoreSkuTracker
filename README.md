@@ -12,6 +12,8 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
 - Show relative last-visit timing in the live status table
+- Open a prefilled action report email draft for expiring items and overdue store visits
+- Track monthly visit completion per store against a 3-day minimum visit interval
 - See summary totals and the latest visit history
 - Keep activity history for the last 7 days only
 - Add or remove stores, SKUs, and store/SKU assignments
@@ -32,6 +34,8 @@ Open `http://127.0.0.1:8001` in your browser.
 
 Set `PORT` if you want to run it somewhere else.
 
+Optional: set `CRITICAL_REPORT_TO_EMAIL` to prefill the recipient for the dashboard action report email draft.
+
 ## How it works
 
 The app has two main pages:
@@ -43,13 +47,13 @@ Dashboard updates create new records in `stock_visits`. The current status table
 
 The live status table shows last visit as relative time, such as `2 days 3 hours`. The recent visits history still shows the full date and time.
 
-Activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves.
+Detailed activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves. Monthly store visit coverage is retained separately so the action report can show each store's visits made versus expected visits for the current month.
 
 Status rules:
 
-- `Healthy`: current shelf count is above 50% of the recommended count and no items are expiring
-- `Unhealthy`: current shelf count is 20-50% of the recommended count and no items are expiring
-- `Critical`: at least one item is expiring, current shelf count is below 20% of the recommended count, no count has been recorded yet, or the last visit is older than 72 hours
+- `Healthy`: current shelf count is above 50% of the recommended count, no items are expiring, and the latest visit is within 48 hours
+- `Unhealthy`: early warning status when shelf count is 20-50%, the latest visit is 48-72 hours old, or a new store/SKU mapping has not been visited yet
+- `Critical`: immediate action status when at least one item is expiring, shelf count is below 20%, or the store/SKU has not been visited for more than 72 hours
 
 ## Data
 
@@ -59,14 +63,17 @@ Main tables:
 
 - `stores`: active stores available for assignment
 - `skus`: active SKU names
-- `store_skus`: active store-to-SKU assignments with recommended shelf counts
+- `employees`: active employees available in the dashboard save dropdown
+- `store_skus`: active store-to-SKU assignments with recommended shelf counts and mapping creation time
 - `stock_visits`: historical shelf count and expiry count records
+- `monthly_store_visits`: one monthly coverage row per store per day for visit deadline reporting
 
 ## Important behavior notes
 
 - The app does not repopulate active stores/SKUs from old `stock_visits` on startup. This prevents deleted catalog items from reappearing after reload.
 - Historical visit records are preserved even when stores, SKUs, or assignments are removed from the active catalog.
 - Visit records are retained for 7 days only; older activity is automatically pruned.
+- Monthly store visit coverage is stored separately from detailed visit records so per-store monthly performance reporting continues after old activity rows are pruned.
 - Existing store/SKU mappings received a default recommended count of `10` when recommended counts were added.
 - Adding the same store/SKU assignment again from `/manage` updates its recommended count instead of creating a duplicate.
 - Inline dashboard saves create a new `stock_visits` row. The dashboard calculates current status from the latest visit for each store/SKU pair.
