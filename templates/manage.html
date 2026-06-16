@@ -140,7 +140,7 @@
     <form method="get" class="store-filter assignment-scroll-form">
       <label>
         Filter assignments by store
-        <select name="store_id" onchange="this.form.submit()">
+        <select name="store_id" class="assignment-filter-select">
           <option value="">All stores</option>
           {% for store in stores %}
           <option value="{{ store.id }}" {{ 'selected' if selected_store_id == store.id|string else '' }}>{{ store.name }}</option>
@@ -191,7 +191,9 @@
     if (savedAssignmentScrollY !== null) {
       sessionStorage.removeItem('assignmentScrollY');
       window.requestAnimationFrame(() => {
-        window.scrollTo(0, Number(savedAssignmentScrollY));
+        window.requestAnimationFrame(() => {
+          window.scrollTo(0, Number(savedAssignmentScrollY));
+        });
       });
     }
 
@@ -200,6 +202,13 @@
         sessionStorage.setItem('assignmentScrollY', String(window.scrollY));
       });
     });
+
+    const assignmentFilterSelect = document.querySelector('.assignment-filter-select');
+    if (assignmentFilterSelect) {
+      assignmentFilterSelect.addEventListener('change', () => {
+        assignmentFilterSelect.form.requestSubmit();
+      });
+    }
 
     const storeSelect = document.querySelector('.assignment-store-select');
     const skuSelect = document.querySelector('.assignment-sku-select');
