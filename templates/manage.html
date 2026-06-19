@@ -15,6 +15,10 @@
       <strong>{{ stores|length }}</strong>
     </div>
     <div class="stat">
+      <span>Active cities</span>
+      <strong>{{ cities|length }}</strong>
+    </div>
+    <div class="stat">
       <span>Active SKUs</span>
       <strong>{{ skus|length }}</strong>
     </div>
@@ -36,12 +40,36 @@
         Store name
         <input type="text" name="name" placeholder="Downtown Market" required>
       </label>
+      <label>
+        City
+        <select name="city_id" required>
+          <option value="" disabled selected>Select a city</option>
+          {% for city in cities %}
+          <option value="{{ city.id }}">{{ city.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
       <button type="submit">Add store</button>
     </form>
     <div class="manage-list">
       {% for store in stores %}
-      <div class="manage-item">
-        <span>{{ store.name }}</span>
+      <div class="manage-item store-manage-item">
+        <div class="store-manage-summary">
+          <span>{{ store.name }}</span>
+          <small>{{ store.city_name or 'No city set' }}</small>
+        </div>
+        <form action="{{ url_for('update_store_city', store_id=store.id) }}" method="post" class="city-form">
+          <label>
+            City
+            <select name="city_id">
+              <option value="">No city selected</option>
+              {% for city in cities %}
+              <option value="{{ city.id }}" {{ 'selected' if store.city_id == city.id else '' }}>{{ city.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit" class="compact-button">Save</button>
+        </form>
         <form action="{{ url_for('delete_store', store_id=store.id) }}" method="post">
           <button type="submit" class="danger" onclick="return confirm('Delete this store from the dropdown list?')">Delete</button>
         </form>
@@ -52,7 +80,33 @@
     </div>
   </article>
 
-  <article class="card list-card" id="employees">
+  <article class="card list-card">
+    <div class="section-heading">
+      <p class="eyebrow">Cities</p>
+      <h2>City list</h2>
+    </div>
+    <form action="{{ url_for('add_city') }}" method="post" class="catalog-form">
+      <label>
+        City name
+        <input type="text" name="name" placeholder="Chandigarh" required>
+      </label>
+      <button type="submit">Add city</button>
+    </form>
+    <div class="manage-list">
+      {% for city in cities %}
+      <div class="manage-item">
+        <span>{{ city.name }}</span>
+        <form action="{{ url_for('delete_city', city_id=city.id) }}" method="post">
+          <button type="submit" class="danger" onclick="return confirm('Delete this city and remove it from mapped stores?')">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="empty-state">No cities added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card">
     <div class="section-heading">
       <p class="eyebrow">SKUs</p>
       <h2>SKU list</h2>
@@ -78,7 +132,7 @@
     </div>
   </article>
 
-  <article class="card list-card">
+  <article class="card list-card" id="employees">
     <div class="section-heading">
       <p class="eyebrow">Employees</p>
       <h2>Employee list</h2>

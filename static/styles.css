@@ -287,7 +287,7 @@ button:hover {
 
 .search-bar {
   display: grid;
-  grid-template-columns: 1fr minmax(12rem, 0.35fr) auto;
+  grid-template-columns: 1fr minmax(11rem, 0.28fr) minmax(12rem, 0.32fr) auto;
   gap: 0.8rem;
   margin-bottom: 1rem;
 }
@@ -570,6 +570,38 @@ button:hover {
 
 .manage-item span {
   font-weight: 600;
+}
+
+.store-manage-item {
+  align-items: end;
+}
+
+.store-manage-summary {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 10rem;
+}
+
+.store-manage-summary small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.city-form {
+  display: flex;
+  align-items: end;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.city-form label {
+  min-width: 10rem;
+}
+
+.city-form input,
+.city-form select {
+  padding: 0.62rem 0.75rem;
+  border-radius: 12px;
 }
 
 .store-filter {
@@ -988,6 +1020,15 @@ tbody tr.stale-row:hover {
   .manage-item {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .city-form {
+    display: grid;
+    margin-left: 0;
+  }
+
+  .city-form label {
+    min-width: 0;
   }
 
   .store-filter {

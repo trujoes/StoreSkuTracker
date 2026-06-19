@@ -35,7 +35,13 @@
       <a class="button-link report-button" href="{{ critical_report_mailto }}" data-critical-report-link>Email action report</a>
     </div>
     <form method="get" class="search-bar">
-      <input type="text" name="search" value="{{ search }}" placeholder="Filter by store, SKU, or employee">
+      <input type="text" name="search" value="{{ search }}" placeholder="Filter by city, store, SKU, or employee">
+      <select name="city_id">
+        <option value="">All cities</option>
+        {% for city in cities %}
+        <option value="{{ city.id }}" {{ 'selected' if selected_city_id == city.id|string else '' }}>{{ city.name }}</option>
+        {% endfor %}
+      </select>
       <select name="store_id">
         <option value="">All stores</option>
         {% for store in stores %}
@@ -92,8 +98,8 @@
             </thead>
             <tbody data-store-overview-body>
               {% for row in store_overview.rows %}
-              <tr data-overview-row data-store-id="{{ row.store_id }}">
-                <td data-label="Store">{{ row.store_name }}</td>
+              <tr data-overview-row data-store-id="{{ row.store_id }}" data-city-id="{{ row.city_id or '' }}">
+                <td data-label="Store">{{ row.store_name }}{% if row.city_name %}<br><small>{{ row.city_name }}</small>{% endif %}</td>
                 <td data-label="Status"><span class="status-pill status-{{ row.status_lower }}">{{ row.status }}</span></td>
                 <td data-label="Critical SKUs">{{ row.critical_skus }}</td>
                 <td data-label="Expiring">{{ row.expiring_total }}</td>
@@ -114,17 +120,17 @@
 
     <div class="status-group-list">
       {% for group in dashboard_status_groups %}
-      <section class="status-store-group" data-status-group data-store-id="{{ group.store_id }}">
+      <section class="status-store-group" data-status-group data-store-id="{{ group.store_id }}" data-city-id="{{ group.city_id or '' }}">
         <div class="status-store-heading">
           <div>
             <h3>{{ group.store_name }}</h3>
-            <p>{{ group.rows|length }} SKU{{ '' if group.rows|length == 1 else 's' }} mapped</p>
+            <p>{% if group.city_name %}{{ group.city_name }} · {% endif %}{{ group.rows|length }} SKU{{ '' if group.rows|length == 1 else 's' }} mapped</p>
           </div>
         </div>
         <div class="status-sku-list">
           {% for row in group.rows %}
           {% set row_form_id = "status-form-%s-%s"|format(row.store_id, row.sku_id) %}
-          <div data-status-row data-store-id="{{ row.store_id }}" data-sku-id="{{ row.sku_id }}" class="status-sku-row {{ 'stale-row' if row.is_stale else '' }}">
+          <div data-status-row data-store-id="{{ row.store_id }}" data-city-id="{{ row.city_id or '' }}" data-sku-id="{{ row.sku_id }}" class="status-sku-row {{ 'stale-row' if row.is_stale else '' }}">
             <div class="status-sku-title">
               <span class="sku-name">{{ row.sku_name }}</span>
               <span data-field="status" class="status-pill status-{{ row.status|lower }}">{{ row.status }}</span>

@@ -56,8 +56,8 @@ function updateStoreOverview(overview) {
   }
 
   body.innerHTML = rows.map((row) => `
-    <tr data-overview-row data-store-id="${escapeHtml(row.store_id)}">
-      <td data-label="Store">${escapeHtml(row.store_name)}</td>
+    <tr data-overview-row data-store-id="${escapeHtml(row.store_id)}" data-city-id="${escapeHtml(row.city_id || '')}">
+      <td data-label="Store">${escapeHtml(row.store_name)}${row.city_name ? `<br><small>${escapeHtml(row.city_name)}</small>` : ''}</td>
       <td data-label="Status"><span class="status-pill status-${escapeHtml(row.status_lower)}">${escapeHtml(row.status)}</span></td>
       <td data-label="Critical SKUs">${escapeHtml(row.critical_skus)}</td>
       <td data-label="Expiring">${escapeHtml(row.expiring_total)}</td>
@@ -154,20 +154,22 @@ function submitInlineForm(formId) {
   });
 }
 
-function applyDashboardFilter(rawQuery, rawStoreId = '') {
+function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
   const query = String(rawQuery || '').trim().toLowerCase();
   const storeId = String(rawStoreId || '').trim();
+  const cityId = String(rawCityId || '').trim();
   const groups = document.querySelectorAll('[data-status-group]');
   let visibleCount = 0;
 
   groups.forEach((group) => {
     const matchesStore = !storeId || group.dataset.storeId === storeId;
+    const matchesCity = !cityId || group.dataset.cityId === cityId;
     let groupVisibleCount = 0;
 
     group.querySelectorAll('[data-status-row]').forEach((row) => {
       const rowText = row.textContent.toLowerCase();
       const matchesQuery = !query || rowText.includes(query);
-      const isVisible = matchesStore && matchesQuery;
+      const isVisible = matchesStore && matchesCity && matchesQuery;
       row.style.display = isVisible ? '' : 'none';
       if (isVisible) {
         groupVisibleCount += 1;
@@ -182,7 +184,8 @@ function applyDashboardFilter(rawQuery, rawStoreId = '') {
     const rowText = row.textContent.toLowerCase();
     const matchesQuery = !query || rowText.includes(query);
     const matchesStore = !storeId || row.dataset.storeId === storeId;
-    row.style.display = matchesQuery && matchesStore ? '' : 'none';
+    const matchesCity = !cityId || row.dataset.cityId === cityId;
+    row.style.display = matchesQuery && matchesStore && matchesCity ? '' : 'none';
   });
 
   const emptyState = document.querySelector('.dashboard-filter-empty');
@@ -200,7 +203,8 @@ function applyCurrentDashboardFilter() {
   }
   const searchInput = searchBar.querySelector('input[name="search"]');
   const storeSelect = searchBar.querySelector('select[name="store_id"]');
-  applyDashboardFilter(searchInput ? searchInput.value : '', storeSelect ? storeSelect.value : '');
+  const citySelect = searchBar.querySelector('select[name="city_id"]');
+  applyDashboardFilter(searchInput ? searchInput.value : '', storeSelect ? storeSelect.value : '', citySelect ? citySelect.value : '');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -210,17 +214,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const searchInput = searchBar.querySelector('input[name="search"]');
+  const citySelect = searchBar.querySelector('select[name="city_id"]');
   const storeSelect = searchBar.querySelector('select[name="store_id"]');
   if (searchInput) {
-    applyDashboardFilter(searchInput.value, storeSelect ? storeSelect.value : '');
+    applyDashboardFilter(searchInput.value, storeSelect ? storeSelect.value : '', citySelect ? citySelect.value : '');
   }
 
   searchBar.addEventListener('submit', (event) => {
     event.preventDefault();
 
     const query = searchInput ? searchInput.value : '';
+    const cityId = citySelect ? citySelect.value : '';
     const storeId = storeSelect ? storeSelect.value : '';
-    applyDashboardFilter(query, storeId);
+    applyDashboardFilter(query, storeId, cityId);
 
     const url = new URL(window.location.href);
     if (query.trim()) {
@@ -233,8 +239,19 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       url.searchParams.delete('store_id');
     }
+    if (cityId) {
+      url.searchParams.set('city_id', cityId);
+    } else {
+      url.searchParams.delete('city_id');
+    }
     window.history.replaceState({}, '', url);
   });
+
+  if (citySelect) {
+    citySelect.addEventListener('change', () => {
+      searchBar.requestSubmit();
+    });
+  }
 
   if (storeSelect) {
     storeSelect.addEventListener('change', () => {

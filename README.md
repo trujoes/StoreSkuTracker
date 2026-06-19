@@ -11,6 +11,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
+- Filter the dashboard live status by city
 - View dashboard status grouped by store to reduce scanning effort
 - See a store overview with KPI counts, a status donut, and per-store action summary before detailed rows
 - Show relative last-visit timing in the live status table
@@ -19,6 +20,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - See summary totals and the latest visit history
 - Keep activity history for the last 7 days only
 - Add or remove stores, SKUs, and store/SKU assignments
+- Add cities as a catalog and require each new store to be mapped to a city
 - View store/SKU assignments grouped by store, with a store-level filter
 - Preserve historical visit records even when catalog items are removed
 - Uses SQLite for local storage
@@ -63,7 +65,8 @@ The SQLite database is stored at `instance/stock_tracker.sqlite3`.
 
 Main tables:
 
-- `stores`: active stores available for assignment
+- `stores`: active stores available for assignment, with city mapping required for new stores
+- `cities`: active city names available for store mapping
 - `skus`: active SKU names
 - `employees`: active employees available in the dashboard save dropdown
 - `store_skus`: active store-to-SKU assignments with recommended shelf counts and mapping creation time

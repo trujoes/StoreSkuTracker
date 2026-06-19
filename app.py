@@ -39,6 +39,16 @@ def init_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS stores (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                city TEXT,
+                city_id INTEGER
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE
             )
             """
@@ -98,6 +108,32 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(store_name, visit_date)
             )
+            """
+        )
+        store_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(stores)").fetchall()
+        }
+        if "city" not in store_columns:
+            connection.execute("ALTER TABLE stores ADD COLUMN city TEXT")
+        if "city_id" not in store_columns:
+            connection.execute("ALTER TABLE stores ADD COLUMN city_id INTEGER")
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO cities (name)
+            SELECT DISTINCT TRIM(city)
+            FROM stores
+            WHERE city IS NOT NULL AND TRIM(city) != ''
+            """
+        )
+        connection.execute(
+            """
+            UPDATE stores
+            SET city_id = (
+                SELECT cities.id
+                FROM cities
+                WHERE cities.name = TRIM(stores.city)
+            )
+            WHERE city_id IS NULL AND city IS NOT NULL AND TRIM(city) != ''
             """
         )
         store_sku_columns = {
@@ -418,6 +454,8 @@ def build_dashboard_store_overview(rows: list[dict], visit_performance: dict) ->
             group = {
                 "store_id": row["store_id"],
                 "store_name": row["store_name"],
+                "city_id": row["city_id"],
+                "city_name": row["city_name"],
                 "sku_count": 0,
                 "critical_skus": 0,
                 "unhealthy_skus": 0,
@@ -525,7 +563,11 @@ def build_mailto_url(subject: str, body: str) -> str:
     return f"mailto:{quote(recipient)}?subject={quote(subject)}&body={quote(body)}"
 
 
-def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> list[sqlite3.Row]:
+def fetch_current_status_rows(
+    search: str = "",
+    store_id: int | None = None,
+    city_id: int | None = None,
+) -> list[sqlite3.Row]:
     query = """
         WITH latest_visits AS (
             SELECT
@@ -544,6 +586,8 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
         SELECT
             stores.id AS store_id,
             stores.name AS store_name,
+            cities.id AS city_id,
+            cities.name AS city_name,
             skus.id AS sku_id,
             skus.name AS sku_name,
             store_skus.recommended_count,
@@ -554,6 +598,7 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
             latest_visits.created_at
         FROM store_skus
         JOIN stores ON stores.id = store_skus.store_id
+        LEFT JOIN cities ON cities.id = stores.city_id
         JOIN skus ON skus.id = store_skus.sku_id
         LEFT JOIN latest_visits
             ON latest_visits.row_number = 1
@@ -563,12 +608,15 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
     params: list[str] = []
     where_clauses: list[str] = []
     if search:
-        where_clauses.append("(stores.name LIKE ? OR skus.name LIKE ? OR latest_visits.employee_name LIKE ?)")
+        where_clauses.append("(stores.name LIKE ? OR cities.name LIKE ? OR skus.name LIKE ? OR latest_visits.employee_name LIKE ?)")
         like_term = f"%{search}%"
-        params.extend([like_term, like_term, like_term])
+        params.extend([like_term, like_term, like_term, like_term])
     if store_id is not None:
         where_clauses.append("stores.id = ?")
         params.append(str(store_id))
+    if city_id is not None:
+        where_clauses.append("stores.city_id = ?")
+        params.append(str(city_id))
     if where_clauses:
         query += " WHERE " + " AND ".join(where_clauses)
     query += " ORDER BY stores.name COLLATE NOCASE, skus.name COLLATE NOCASE"
@@ -588,6 +636,8 @@ def fetch_current_status_rows(search: str = "", store_id: int | None = None) -> 
             {
                 "store_id": row["store_id"],
                 "store_name": row["store_name"],
+                "city_id": row["city_id"],
+                "city_name": row["city_name"],
                 "sku_id": row["sku_id"],
                 "sku_name": row["sku_name"],
                 "recommended_count": row["recommended_count"],
@@ -616,13 +666,20 @@ def dashboard():
     db.commit()
     search = request.args.get("search", "").strip()
     selected_store_id = request.args.get("store_id", "").strip()
+    selected_city_id = request.args.get("city_id", "").strip()
     selected_store_id_value: int | None = None
+    selected_city_id_value: int | None = None
     if selected_store_id:
         try:
             selected_store_id_value = int(selected_store_id)
         except ValueError:
             selected_store_id_value = None
-    current_status_rows = fetch_current_status_rows(search, selected_store_id_value)
+    if selected_city_id:
+        try:
+            selected_city_id_value = int(selected_city_id)
+        except ValueError:
+            selected_city_id_value = None
+    current_status_rows = fetch_current_status_rows(search, selected_store_id_value, selected_city_id_value)
     dashboard_status_groups = []
     dashboard_groups_by_store: dict[int, dict] = {}
     for row in current_status_rows:
@@ -631,6 +688,8 @@ def dashboard():
             group = {
                 "store_id": row["store_id"],
                 "store_name": row["store_name"],
+                "city_id": row["city_id"],
+                "city_name": row["city_name"],
                 "rows": [],
             }
             dashboard_groups_by_store[row["store_id"]] = group
@@ -645,6 +704,7 @@ def dashboard():
         """
     ).fetchall()
     stores = db.execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
+    cities = db.execute("SELECT id, name FROM cities ORDER BY name COLLATE NOCASE").fetchall()
     skus = db.execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
     employees = db.execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()
 
@@ -670,9 +730,11 @@ def dashboard():
         critical_report_mailto=build_mailto_url(critical_report_subject, critical_report_body),
         search=search,
         stores=stores,
+        cities=cities,
         skus=skus,
         employees=employees,
         selected_store_id=selected_store_id,
+        selected_city_id=selected_city_id,
     )
 
 
@@ -701,7 +763,15 @@ def manage():
         except ValueError:
             selected_store_id_value = None
 
-    stores = get_db().execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
+    stores = get_db().execute(
+        """
+        SELECT stores.id, stores.name, stores.city_id, COALESCE(cities.name, stores.city) AS city_name
+        FROM stores
+        LEFT JOIN cities ON cities.id = stores.city_id
+        ORDER BY stores.name COLLATE NOCASE
+        """
+    ).fetchall()
+    cities = get_db().execute("SELECT id, name FROM cities ORDER BY name COLLATE NOCASE").fetchall()
     skus = get_db().execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
     employees = get_db().execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()
     store_sku_rows = get_db().execute(
@@ -743,6 +813,7 @@ def manage():
     return render_template(
         "manage.html",
         stores=stores,
+        cities=cities,
         skus=skus,
         employees=employees,
         assignment_groups=assignment_groups,
@@ -754,10 +825,51 @@ def manage():
 @app.route("/stores", methods=["POST"])
 def add_store():
     name = request.form.get("name", "").strip()
+    city_id = request.form.get("city_id", "").strip()
+    if not name or not city_id:
+        return redirect(url_for("manage"))
+    try:
+        city_id_value = int(city_id)
+    except ValueError:
+        return redirect(url_for("manage"))
+    db = get_db()
+    city_exists = db.execute("SELECT 1 FROM cities WHERE id = ?", (city_id_value,)).fetchone()
+    if city_exists is None:
+        return redirect(url_for("manage"))
+    db.execute("INSERT OR IGNORE INTO stores (name, city_id) VALUES (?, ?)", (name, city_id_value))
+    db.commit()
+    return redirect(url_for("manage"))
+
+
+@app.route("/stores/<int:store_id>/city", methods=["POST"])
+def update_store_city(store_id: int):
+    city_id = request.form.get("city_id", "").strip()
+    try:
+        city_id_value = int(city_id) if city_id else None
+    except ValueError:
+        return redirect(url_for("manage"))
+    db = get_db()
+    db.execute("UPDATE stores SET city_id = ? WHERE id = ?", (city_id_value, store_id))
+    db.commit()
+    return redirect(url_for("manage"))
+
+
+@app.route("/cities", methods=["POST"])
+def add_city():
+    name = request.form.get("name", "").strip()
     if name:
         db = get_db()
-        db.execute("INSERT OR IGNORE INTO stores (name) VALUES (?)", (name,))
+        db.execute("INSERT OR IGNORE INTO cities (name) VALUES (?)", (name,))
         db.commit()
+    return redirect(url_for("manage"))
+
+
+@app.route("/cities/<int:city_id>/delete", methods=["POST"])
+def delete_city(city_id: int):
+    db = get_db()
+    db.execute("UPDATE stores SET city_id = NULL WHERE city_id = ?", (city_id,))
+    db.execute("DELETE FROM cities WHERE id = ?", (city_id,))
+    db.commit()
     return redirect(url_for("manage"))
 
 
