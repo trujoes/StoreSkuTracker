@@ -316,6 +316,101 @@ button:hover {
   line-height: 1.45;
 }
 
+.status-group-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.status-store-group {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.status-store-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.status-store-heading h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.status-store-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font: 600 0.8rem/1 "IBM Plex Mono", monospace;
+}
+
+.status-sku-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.status-sku-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.32fr) minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.status-sku-row.stale-row {
+  background: rgba(246, 199, 193, 0.42);
+  border-color: rgba(124, 29, 20, 0.16);
+}
+
+.status-sku-title {
+  display: grid;
+  gap: 0.5rem;
+  align-content: center;
+}
+
+.status-sku-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(7rem, 1fr));
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.status-sku-metrics > div,
+.status-sku-metrics label {
+  min-width: 0;
+}
+
+.status-sku-metrics span,
+.status-sku-metrics label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.status-sku-metrics strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.status-sku-metrics input {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.status-sku-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .catalog-card {
   grid-column: 1 / -1;
 }
@@ -638,8 +733,27 @@ tbody tr.stale-row:hover {
   .catalog-grid,
   .catalog-list,
   .search-bar,
-  .status-note {
+  .status-note,
+  .status-sku-row,
+  .status-sku-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .status-store-group {
+    padding: 0.9rem;
+  }
+
+  .status-store-heading {
+    align-items: flex-start;
+  }
+
+  .status-sku-row {
+    align-items: stretch;
+  }
+
+  .status-sku-action,
+  .inline-status-form {
+    justify-content: stretch;
   }
 
   .stat {
@@ -732,7 +846,6 @@ tbody tr.stale-row:hover {
 
   .inline-status-form {
     display: grid;
-    justify-content: stretch;
   }
 
   .inline-status-form select {

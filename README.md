@@ -11,6 +11,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
+- View dashboard status grouped by store to reduce scanning effort
 - Show relative last-visit timing in the live status table
 - Open a prefilled action report email draft for expiring items and overdue store visits
 - Track monthly visit completion per store against a 3-day minimum visit interval

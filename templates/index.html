@@ -45,38 +45,46 @@
       <button type="submit">Filter</button>
     </form>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>SKU</th>
-            <th>Recommended #</th>
-            <th>Current #</th>
-            <th>Expiring #</th>
-            <th>Last visit</th>
-            <th>Last visit made by</th>
-            <th>Status</th>
-            <th>Update</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in current_status_rows %}
+    <div class="status-group-list">
+      {% for group in dashboard_status_groups %}
+      <section class="status-store-group" data-status-group data-store-id="{{ group.store_id }}">
+        <div class="status-store-heading">
+          <div>
+            <h3>{{ group.store_name }}</h3>
+            <p>{{ group.rows|length }} SKU{{ '' if group.rows|length == 1 else 's' }} mapped</p>
+          </div>
+        </div>
+        <div class="status-sku-list">
+          {% for row in group.rows %}
           {% set row_form_id = "status-form-%s-%s"|format(row.store_id, row.sku_id) %}
-          <tr data-store-id="{{ row.store_id }}" data-sku-id="{{ row.sku_id }}" class="{{ 'stale-row' if row.is_stale else '' }}">
-            <td data-label="Store">{{ row.store_name }}</td>
-            <td data-label="SKU">{{ row.sku_name }}</td>
-            <td data-label="Recommended">{{ row.recommended_count }}</td>
-            <td data-label="Current">
-              <input class="inline-number" type="number" min="0" name="shelf_count" form="{{ row_form_id }}" value="{{ row.shelf_count if row.shelf_count is not none else 0 }}" placeholder="0">
-            </td>
-            <td data-label="Expiring">
-              <input class="inline-number" type="number" min="0" name="expiring_count" form="{{ row_form_id }}" value="{{ row.expiring_count if row.expiring_count is not none else 0 }}" placeholder="0">
-            </td>
-            <td data-label="Last visit">{{ row.last_visit | relative_time_display }}</td>
-            <td data-label="Last visit made by">{{ row.employee_name or 'No visit' }}</td>
-            <td data-label="Status"><span class="status-pill status-{{ row.status|lower }}">{{ row.status }}</span></td>
-            <td data-label="Update">
+          <div data-status-row data-store-id="{{ row.store_id }}" data-sku-id="{{ row.sku_id }}" class="status-sku-row {{ 'stale-row' if row.is_stale else '' }}">
+            <div class="status-sku-title">
+              <span class="sku-name">{{ row.sku_name }}</span>
+              <span data-field="status" class="status-pill status-{{ row.status|lower }}">{{ row.status }}</span>
+            </div>
+            <div class="status-sku-metrics">
+              <div>
+                <span>Recommended</span>
+                <strong>{{ row.recommended_count }}</strong>
+              </div>
+              <label>
+                Current
+                <input class="inline-number" type="number" min="0" name="shelf_count" form="{{ row_form_id }}" value="{{ row.shelf_count if row.shelf_count is not none else 0 }}" placeholder="0">
+              </label>
+              <label>
+                Expiring
+                <input class="inline-number" type="number" min="0" name="expiring_count" form="{{ row_form_id }}" value="{{ row.expiring_count if row.expiring_count is not none else 0 }}" placeholder="0">
+              </label>
+              <div>
+                <span>Last visit</span>
+                <strong data-field="last_visit">{{ row.last_visit | relative_time_display }}</strong>
+              </div>
+              <div>
+                <span>Last visit made by</span>
+                <strong data-field="employee_name">{{ row.employee_name or 'No visit' }}</strong>
+              </div>
+            </div>
+            <div class="status-sku-action">
               <form id="{{ row_form_id }}" action="{{ url_for('record_visit') }}" method="post" class="inline-status-form">
                 <input type="hidden" name="store_id" value="{{ row.store_id }}">
                 <input type="hidden" name="sku_id" value="{{ row.sku_id }}">
@@ -89,15 +97,17 @@
                 </select>
                 <button type="button" class="inline-save" onclick="submitInlineForm('{{ row_form_id }}')">Save</button>
               </form>
-            </td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="9" class="empty-state">No store-SKU mappings yet. Add assignments in Manage to see live status here.</td>
-          </tr>
+            </div>
+          </div>
           {% endfor %}
-        </tbody>
-      </table>
+        </div>
+      </section>
+      {% else %}
+      <p class="empty-state" data-dashboard-empty>No store-SKU mappings yet. Add assignments in Manage to see live status here.</p>
+      {% endfor %}
+      {% if dashboard_status_groups %}
+      <p class="empty-state dashboard-filter-empty" data-dashboard-empty style="display: none;">No matching store-SKU rows for this filter.</p>
+      {% endif %}
     </div>
 
     <div class="status-note" aria-label="Status color conditions">

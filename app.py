@@ -509,6 +509,19 @@ def dashboard():
         except ValueError:
             selected_store_id_value = None
     current_status_rows = fetch_current_status_rows(search, selected_store_id_value)
+    dashboard_status_groups = []
+    dashboard_groups_by_store: dict[int, dict] = {}
+    for row in current_status_rows:
+        group = dashboard_groups_by_store.get(row["store_id"])
+        if group is None:
+            group = {
+                "store_id": row["store_id"],
+                "store_name": row["store_name"],
+                "rows": [],
+            }
+            dashboard_groups_by_store[row["store_id"]] = group
+            dashboard_status_groups.append(group)
+        group["rows"].append(row)
     recent_visits = db.execute(
         """
         SELECT id, store_name, employee_name, sku, shelf_count, expiring_count, notes, created_at
@@ -534,6 +547,7 @@ def dashboard():
     return render_template(
         "index.html",
         current_status_rows=current_status_rows,
+        dashboard_status_groups=dashboard_status_groups,
         recent_visits=recent_visits,
         summary=summary,
         critical_report_mailto=build_mailto_url(critical_report_subject, critical_report_body),
