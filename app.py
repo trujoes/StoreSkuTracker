@@ -13,6 +13,7 @@ from flask import Flask, g, jsonify, redirect, render_template, request, url_for
 BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 DATABASE_PATH = INSTANCE_DIR / "stock_tracker.sqlite3"
+INVENTORY_UNITS = ("KG", "Litres", "Bottles")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "stock-tracker-local-dev"
@@ -20,6 +21,10 @@ app.config["SECRET_KEY"] = "stock-tracker-local-dev"
 
 def cleanup_old_visits(connection: sqlite3.Connection) -> None:
     connection.execute("DELETE FROM stock_visits WHERE datetime(created_at) < datetime('now', '-7 days')")
+
+
+def cleanup_old_inventory_history(connection: sqlite3.Connection) -> None:
+    connection.execute("DELETE FROM inventory_history WHERE datetime(created_at) < datetime('now', '-7 days')")
 
 
 def get_db() -> sqlite3.Connection:
@@ -110,6 +115,43 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS inventory_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+                unit TEXT NOT NULL DEFAULT 'Bottles',
+                emergency_minimum INTEGER NOT NULL DEFAULT 5 CHECK (emergency_minimum >= 0),
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS inventory_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id INTEGER,
+                item_name TEXT NOT NULL,
+                change_type TEXT NOT NULL,
+                quantity_before INTEGER,
+                quantity_after INTEGER,
+                emergency_minimum_before INTEGER,
+                emergency_minimum_after INTEGER,
+                note TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        inventory_item_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(inventory_items)").fetchall()
+        }
+        if "emergency_minimum" not in inventory_item_columns:
+            connection.execute(
+                "ALTER TABLE inventory_items ADD COLUMN emergency_minimum INTEGER NOT NULL DEFAULT 5 CHECK (emergency_minimum >= 0)"
+            )
+        if "unit" not in inventory_item_columns:
+            connection.execute("ALTER TABLE inventory_items ADD COLUMN unit TEXT NOT NULL DEFAULT 'Bottles'")
         store_columns = {
             row[1] for row in connection.execute("PRAGMA table_info(stores)").fetchall()
         }
@@ -167,6 +209,7 @@ def init_db() -> None:
                 """
             )
         cleanup_old_visits(connection)
+        cleanup_old_inventory_history(connection)
         connection.commit()
     finally:
         connection.close()
@@ -292,6 +335,72 @@ def record_monthly_store_visit(db: sqlite3.Connection, store_id: int, store_name
             updated_at = CURRENT_TIMESTAMP
         """,
         (store_id, store_name, employee_name, visit_date, month_key),
+    )
+
+
+def record_inventory_history(
+    db: sqlite3.Connection,
+    item_id: int | None,
+    item_name: str,
+    change_type: str,
+    quantity_before: int | None,
+    quantity_after: int | None,
+    emergency_minimum_before: int | None,
+    emergency_minimum_after: int | None,
+    note: str = "",
+) -> None:
+    db.execute(
+        """
+        INSERT INTO inventory_history (
+            item_id,
+            item_name,
+            change_type,
+            quantity_before,
+            quantity_after,
+            emergency_minimum_before,
+            emergency_minimum_after,
+            note
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            item_id,
+            item_name,
+            change_type,
+            quantity_before,
+            quantity_after,
+            emergency_minimum_before,
+            emergency_minimum_after,
+            note,
+        ),
+    )
+
+
+def build_inventory_update_response(db: sqlite3.Connection, item_id: int):
+    updated_row = db.execute(
+        "SELECT id, quantity, unit, emergency_minimum, updated_at FROM inventory_items WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    rows = db.execute("SELECT quantity, emergency_minimum FROM inventory_items").fetchall()
+    return jsonify(
+        {
+            "ok": True,
+            "item": {
+                "id": updated_row["id"],
+                "quantity": updated_row["quantity"],
+                "unit": updated_row["unit"],
+                "emergency_minimum": updated_row["emergency_minimum"],
+                "updated_at": updated_row["updated_at"],
+                "updated_display": relative_time_display(updated_row["updated_at"]),
+                "is_low_stock": (updated_row["quantity"] or 0) <= (updated_row["emergency_minimum"] or 0),
+            },
+            "summary": {
+                "total_units": sum(row["quantity"] or 0 for row in rows),
+                "low_stock_count": sum(
+                    1 for row in rows if (row["quantity"] or 0) <= (row["emergency_minimum"] or 0)
+                ),
+            },
+        }
     )
 
 
@@ -753,6 +862,98 @@ def store_skus_api(store_id: int):
     return jsonify([{"id": row["id"], "name": row["name"]} for row in rows])
 
 
+@app.route("/inventory", methods=["GET"])
+def inventory():
+    db = get_db()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    rows = db.execute(
+        """
+        SELECT
+            id,
+            name,
+            quantity,
+            unit,
+            emergency_minimum,
+            updated_at
+        FROM inventory_items
+        ORDER BY name COLLATE NOCASE
+        """
+    ).fetchall()
+    total_units = sum(row["quantity"] or 0 for row in rows)
+    low_stock_count = sum(1 for row in rows if (row["quantity"] or 0) <= (row["emergency_minimum"] or 0))
+    history_rows = db.execute(
+        """
+        SELECT item_name, change_type, quantity_before, quantity_after, emergency_minimum_before,
+               emergency_minimum_after, note, created_at
+        FROM inventory_history
+        ORDER BY datetime(created_at) DESC, id DESC
+        LIMIT 20
+        """
+    ).fetchall()
+    return render_template(
+        "inventory.html",
+        inventory_rows=rows,
+        history_rows=history_rows,
+        total_units=total_units,
+        low_stock_count=low_stock_count,
+        inventory_units=INVENTORY_UNITS,
+    )
+
+
+@app.route("/inventory/items", methods=["POST"])
+def add_inventory_item():
+    name = request.form.get("name", "").strip()
+    quantity = request.form.get("quantity", "").strip()
+    unit = request.form.get("unit", "").strip()
+    emergency_minimum = request.form.get("emergency_minimum", "").strip()
+    if not name or unit not in INVENTORY_UNITS:
+        return redirect(url_for("inventory"))
+    try:
+        quantity_value = int(quantity or 0)
+        emergency_minimum_value = int(emergency_minimum or 0)
+    except ValueError:
+        return redirect(url_for("inventory"))
+    if quantity_value < 0 or emergency_minimum_value < 0:
+        return redirect(url_for("inventory"))
+
+    db = get_db()
+    existing_row = db.execute(
+        "SELECT id, quantity, unit, emergency_minimum FROM inventory_items WHERE name = ?",
+        (name,),
+    ).fetchone()
+    db.execute(
+        """
+        INSERT INTO inventory_items (name, quantity, unit, emergency_minimum, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(name) DO UPDATE SET
+            quantity = inventory_items.quantity + excluded.quantity,
+            emergency_minimum = excluded.emergency_minimum,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (name, quantity_value, unit, emergency_minimum_value),
+    )
+    item_row = db.execute(
+        "SELECT id, quantity, unit, emergency_minimum FROM inventory_items WHERE name = ?",
+        (name,),
+    ).fetchone()
+    record_inventory_history(
+        db,
+        item_row["id"],
+        name,
+        "Added item" if existing_row is None else "Added stock",
+        existing_row["quantity"] if existing_row else None,
+        item_row["quantity"],
+        existing_row["emergency_minimum"] if existing_row else None,
+        item_row["emergency_minimum"],
+        f"Inventory item saved in {item_row['unit']}",
+    )
+    db.commit()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    return redirect(url_for("inventory"))
+
+
 @app.route("/manage", methods=["GET"])
 def manage():
     selected_store_id = request.args.get("store_id", "").strip()
@@ -899,6 +1100,156 @@ def delete_sku(sku_id: int):
     db.execute("DELETE FROM skus WHERE id = ?", (sku_id,))
     db.commit()
     return redirect(url_for("manage"))
+
+
+@app.route("/inventory/<int:item_id>/set", methods=["POST"])
+def set_inventory_item(item_id: int):
+    quantity = request.form.get("quantity", "").strip()
+    try:
+        quantity_value = int(quantity or 0)
+    except ValueError:
+        return redirect(url_for("inventory"))
+    if quantity_value < 0:
+        return redirect(url_for("inventory"))
+
+    db = get_db()
+    item_row = db.execute(
+        "SELECT id, name, quantity, emergency_minimum FROM inventory_items WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    if item_row is None:
+        return redirect(url_for("inventory"))
+    db.execute(
+        """
+        UPDATE inventory_items
+        SET quantity = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (quantity_value, item_id),
+    )
+    record_inventory_history(
+        db,
+        item_id,
+        item_row["name"],
+        "Set quantity",
+        item_row["quantity"],
+        quantity_value,
+        item_row["emergency_minimum"],
+        item_row["emergency_minimum"],
+        "Exact quantity saved",
+    )
+    db.commit()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return build_inventory_update_response(db, item_id)
+    return redirect(url_for("inventory"))
+
+
+@app.route("/inventory/<int:item_id>/minimum", methods=["POST"])
+def set_inventory_minimum(item_id: int):
+    emergency_minimum = request.form.get("emergency_minimum", "").strip()
+    try:
+        emergency_minimum_value = int(emergency_minimum or 0)
+    except ValueError:
+        return redirect(url_for("inventory"))
+    if emergency_minimum_value < 0:
+        return redirect(url_for("inventory"))
+
+    db = get_db()
+    item_row = db.execute(
+        "SELECT id, name, quantity, emergency_minimum FROM inventory_items WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    if item_row is None:
+        return redirect(url_for("inventory"))
+    db.execute(
+        "UPDATE inventory_items SET emergency_minimum = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (emergency_minimum_value, item_id),
+    )
+    record_inventory_history(
+        db,
+        item_id,
+        item_row["name"],
+        "Set emergency minimum",
+        item_row["quantity"],
+        item_row["quantity"],
+        item_row["emergency_minimum"],
+        emergency_minimum_value,
+        "Emergency minimum saved",
+    )
+    db.commit()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return build_inventory_update_response(db, item_id)
+    return redirect(url_for("inventory"))
+
+
+@app.route("/inventory/<int:item_id>/adjust", methods=["POST"])
+def adjust_inventory_item(item_id: int):
+    adjustment = request.form.get("adjustment", "").strip()
+    try:
+        adjustment_value = int(adjustment)
+    except ValueError:
+        return redirect(url_for("inventory"))
+
+    db = get_db()
+    current_row = db.execute(
+        "SELECT name, quantity, unit, emergency_minimum FROM inventory_items WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    if current_row is None:
+        return redirect(url_for("inventory"))
+    current_quantity = current_row["quantity"] if current_row else 0
+    new_quantity = max(current_quantity + adjustment_value, 0)
+    db.execute(
+        "UPDATE inventory_items SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (new_quantity, item_id),
+    )
+    record_inventory_history(
+        db,
+        item_id,
+        current_row["name"],
+        "Adjusted quantity",
+        current_quantity,
+        new_quantity,
+        current_row["emergency_minimum"],
+        current_row["emergency_minimum"],
+        f"Adjustment {adjustment_value:+d}",
+    )
+    db.commit()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return build_inventory_update_response(db, item_id)
+    return redirect(url_for("inventory"))
+
+
+@app.route("/inventory/<int:item_id>/delete", methods=["POST"])
+def delete_inventory_item(item_id: int):
+    db = get_db()
+    item_row = db.execute(
+        "SELECT name, quantity, emergency_minimum FROM inventory_items WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    if item_row is not None:
+        record_inventory_history(
+            db,
+            item_id,
+            item_row["name"],
+            "Deleted item",
+            item_row["quantity"],
+            None,
+            item_row["emergency_minimum"],
+            None,
+            "Inventory item deleted",
+        )
+    db.execute("DELETE FROM inventory_items WHERE id = ?", (item_id,))
+    db.commit()
+    cleanup_old_inventory_history(db)
+    db.commit()
+    return redirect(url_for("inventory"))
 
 
 @app.route("/employees", methods=["POST"])

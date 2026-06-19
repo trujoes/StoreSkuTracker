@@ -30,7 +30,7 @@
     <div class="section-heading section-heading-actions">
       <div>
         <p class="eyebrow">Current Status</p>
-        <h2>Live stock by store and SKU</h2>
+        <h2 class="heading-with-live">Live stock by store and SKU <span class="live-indicator" aria-label="Live" title="Live"></span></h2>
       </div>
       <a class="button-link report-button" href="{{ critical_report_mailto }}" data-critical-report-link>Email action report</a>
     </div>
@@ -98,7 +98,14 @@
             </thead>
             <tbody data-store-overview-body>
               {% for row in store_overview.rows %}
-              <tr data-overview-row data-store-id="{{ row.store_id }}" data-city-id="{{ row.city_id or '' }}">
+              <tr
+                data-overview-row
+                data-store-id="{{ row.store_id }}"
+                data-city-id="{{ row.city_id or '' }}"
+                data-status="{{ row.status }}"
+                data-overdue="{{ 1 if row.is_overdue else 0 }}"
+                data-expiring-skus="{{ row.expiring_skus }}"
+              >
                 <td data-label="Store">{{ row.store_name }}{% if row.city_name %}<br><small>{{ row.city_name }}</small>{% endif %}</td>
                 <td data-label="Status"><span class="status-pill status-{{ row.status_lower }}">{{ row.status }}</span></td>
                 <td data-label="Critical SKUs">{{ row.critical_skus }}</td>

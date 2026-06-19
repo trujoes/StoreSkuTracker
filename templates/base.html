@@ -18,12 +18,44 @@
           <p class="eyebrow">Stock Tracker</p>
           <h2 class="brand-title">Shelf counts, expiry checks, and catalog control</h2>
         </div>
-        <nav class="nav-links">
-          <a href="{{ url_for('dashboard') }}">Dashboard</a>
-          <a href="{{ url_for('manage') }}">Manage Stores & SKUs</a>
+        <nav class="nav-links" aria-label="Primary navigation">
+          <div class="nav-group">
+            <span>Retail</span>
+            <div>
+              <a href="{{ url_for('dashboard') }}">Dashboard</a>
+              <a href="{{ url_for('manage') }}">Manage Stores & SKUs</a>
+            </div>
+          </div>
+          <div class="nav-group">
+            <span>B2B & Retail</span>
+            <div>
+              <a href="{{ url_for('inventory') }}">SKU Inventory</a>
+            </div>
+          </div>
         </nav>
       </header>
       {% block content %}{% endblock %}
     </main>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const scrollKey = `stockTrackerScroll:${window.location.pathname}`;
+        const savedScrollY = sessionStorage.getItem(scrollKey);
+        if (savedScrollY !== null) {
+          sessionStorage.removeItem(scrollKey);
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              window.scrollTo(0, Number(savedScrollY));
+            });
+          });
+        }
+
+        document.querySelectorAll('form').forEach((form) => {
+          form.addEventListener('submit', () => {
+            sessionStorage.setItem(scrollKey, String(window.scrollY));
+          });
+        });
+      });
+    </script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>

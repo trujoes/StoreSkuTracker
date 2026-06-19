@@ -8,6 +8,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Set a recommended shelf count for each store/SKU assignment
 - Edit recommended shelf counts directly from the assignment list
 - Update shelf count and expiring count inline from the dashboard
+- Maintain independent B2B inventory items with fixed units, emergency minimums, low-stock counts, history, quick plus/minus, and exact quantity controls
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
@@ -45,13 +46,16 @@ Optional: set `CRITICAL_REPORT_TO_EMAIL` to prefill the recipient for the dashbo
 The app has two main pages:
 
 - `/dashboard` shows the current shelf and expiry status for each configured store/SKU pair.
+- `/inventory` lets you add independent inventory items and maintain central quantities for B2B clients.
 - `/manage` lets you maintain the active store list, SKU list, and which SKUs each store carries.
+
+Inventory items are separate from the `/manage` SKU catalog. Adding or deleting inventory items does not add or delete store-tracking SKUs. Each inventory item has a unit selected when it is created (`KG`, `Litres`, or `Bottles`), and that unit is not edited from the item row afterward. Low stock is calculated per item using its emergency minimum.
 
 Dashboard updates create new records in `stock_visits`. The current status table is calculated from the latest retained visit for each store/SKU pair.
 
 The live status table shows last visit as relative time, such as `2 days 3 hours`. The recent visits history still shows the full date and time.
 
-Detailed activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves. Monthly store visit coverage is retained separately so the action report can show each store's visits made versus expected visits for the current month.
+Detailed activity history is retained for 7 days. Older `stock_visits` records are removed automatically during app startup, dashboard loads, and new dashboard saves. Older `inventory_history` records are removed automatically during app startup, inventory page loads, and inventory saves. Monthly store visit coverage is retained separately so the action report can show each store's visits made versus expected visits for the current month.
 
 Status rules:
 
@@ -68,6 +72,8 @@ Main tables:
 - `stores`: active stores available for assignment, with city mapping required for new stores
 - `cities`: active city names available for store mapping
 - `skus`: active SKU names
+- `inventory_items`: independent B2B inventory item names, fixed units, current quantities, emergency minimums, and last update time
+- `inventory_history`: latest 7 days of inventory quantity/minimum changes
 - `employees`: active employees available in the dashboard save dropdown
 - `store_skus`: active store-to-SKU assignments with recommended shelf counts and mapping creation time
 - `stock_visits`: historical shelf count and expiry count records

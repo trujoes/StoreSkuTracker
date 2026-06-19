@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}SKU Inventory{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Inventory</p>
+    <h1>SKU Inventory.</h1>
+    <p class="hero-copy">Maintain inventory items for B2B clients with quick plus/minus input helpers and exact quantity saves.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <span>Inventory items</span>
+      <strong>{{ inventory_rows|length }}</strong>
+    </div>
+    <div class="stat">
+      <span>Total units</span>
+      <strong data-inventory-summary="total_units">{{ total_units }}</strong>
+    </div>
+    <div class="stat">
+      <span>Low stock SKUs</span>
+      <strong data-inventory-summary="low_stock_count">{{ low_stock_count }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-layout">
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">Stock</p>
+      <h2 class="heading-with-live">Inventory items <span class="live-indicator" aria-label="Live" title="Live"></span></h2>
+    </div>
+    <div class="inventory-list">
+      {% for row in inventory_rows %}
+      <div class="inventory-row" data-inventory-row data-item-id="{{ row.id }}">
+        <div class="inventory-title">
+          <span>{{ row.name }}</span>
+          <small>Unit: {{ row.unit }}</small>
+          <small>Updated <span data-field="inventory_updated">{{ row.updated_at | relative_time_display }}</span></small>
+          <small class="inventory-warning" data-field="inventory_warning" {% if row.quantity > row.emergency_minimum %}hidden{% endif %}>Low stock</small>
+        </div>
+        <div class="inventory-count">
+          <span>Current inventory</span>
+          <strong><span data-field="inventory_quantity">{{ row.quantity }}</span> <span class="inventory-unit">{{ row.unit }}</span></strong>
+        </div>
+        <div class="inventory-count">
+          <span>Emergency minimum</span>
+          <strong data-field="inventory_minimum">{{ row.emergency_minimum }}</strong>
+        </div>
+        <div class="inventory-actions">
+          <div class="stepper-form" data-inventory-stepper>
+            <button type="button" data-inventory-step="-1" class="compact-button secondary-button">-1</button>
+            <button type="button" data-inventory-step="1" class="compact-button">+1</button>
+            <button type="button" data-inventory-step="12" class="compact-button">+12</button>
+          </div>
+          <form action="{{ url_for('set_inventory_item', item_id=row.id) }}" method="post" class="inventory-set-form" data-inventory-save-form>
+            <label>
+              Set exact
+              <input type="number" name="quantity" min="0" value="{{ row.quantity }}" required>
+            </label>
+            <button type="submit" class="compact-button">Save</button>
+          </form>
+          <form action="{{ url_for('set_inventory_minimum', item_id=row.id) }}" method="post" class="inventory-set-form" data-inventory-save-form>
+            <label>
+              Min
+              <input type="number" name="emergency_minimum" min="0" value="{{ row.emergency_minimum }}" required>
+            </label>
+            <button type="submit" class="compact-button">Save min</button>
+          </form>
+          <form action="{{ url_for('delete_inventory_item', item_id=row.id) }}" method="post">
+            <button type="submit" class="danger compact-button" onclick="return confirm('Delete this inventory item?')">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-state">No inventory items added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card">
+    <div class="section-heading section-heading-actions">
+      <div>
+        <p class="eyebrow">Catalog</p>
+        <h2>Add inventory item</h2>
+      </div>
+    </div>
+    <form action="{{ url_for('add_inventory_item') }}" method="post" class="catalog-form inventory-add-form">
+      <label>
+        Item name
+        <input type="text" name="name" placeholder="B2B Coffee Beans 1kg" required>
+      </label>
+      <label>
+        Starting quantity
+        <input type="number" name="quantity" min="0" value="0" required>
+      </label>
+      <label>
+        Unit
+        <select name="unit" required>
+          <option value="" disabled selected>Select unit</option>
+          {% for unit in inventory_units %}
+          <option value="{{ unit }}">{{ unit }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Emergency minimum
+        <input type="number" name="emergency_minimum" min="0" value="5" required>
+      </label>
+      <button type="submit">Add item</button>
+    </form>
+  </article>
+
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">History</p>
+      <h2>Latest inventory updates</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Item</th>
+            <th>Change</th>
+            <th>Quantity</th>
+            <th>Emergency min</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history_rows %}
+          <tr>
+            <td data-label="Time">{{ row.created_at | datetime_display }}</td>
+            <td data-label="Item">{{ row.item_name }}</td>
+            <td data-label="Change">{{ row.change_type }}</td>
+            <td data-label="Quantity">{{ row.quantity_before if row.quantity_before is not none else '—' }} → {{ row.quantity_after if row.quantity_after is not none else '—' }}</td>
+            <td data-label="Emergency min">{{ row.emergency_minimum_before if row.emergency_minimum_before is not none else '—' }} → {{ row.emergency_minimum_after if row.emergency_minimum_after is not none else '—' }}</td>
+            <td data-label="Note">{{ row.note or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6" class="empty-state">No inventory history yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}
