@@ -7,6 +7,10 @@ function updateSummary(summary) {
   }
 }
 
+function preserveScrollForCurrentPage() {
+  sessionStorage.setItem(`stockTrackerScroll:${window.location.pathname}`, String(window.scrollY));
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;',
@@ -56,7 +60,14 @@ function updateStoreOverview(overview) {
   }
 
   body.innerHTML = rows.map((row) => `
-    <tr data-overview-row data-store-id="${escapeHtml(row.store_id)}" data-city-id="${escapeHtml(row.city_id || '')}">
+    <tr
+      data-overview-row
+      data-store-id="${escapeHtml(row.store_id)}"
+      data-city-id="${escapeHtml(row.city_id || '')}"
+      data-status="${escapeHtml(row.status)}"
+      data-overdue="${row.is_overdue ? '1' : '0'}"
+      data-expiring-skus="${escapeHtml(row.expiring_skus)}"
+    >
       <td data-label="Store">${escapeHtml(row.store_name)}${row.city_name ? `<br><small>${escapeHtml(row.city_name)}</small>` : ''}</td>
       <td data-label="Status"><span class="status-pill status-${escapeHtml(row.status_lower)}">${escapeHtml(row.status)}</span></td>
       <td data-label="Critical SKUs">${escapeHtml(row.critical_skus)}</td>
@@ -66,6 +77,63 @@ function updateStoreOverview(overview) {
       <td data-label="Action">${escapeHtml(row.action)}</td>
     </tr>
   `).join('');
+}
+
+function buildDonutStyle(counts, total) {
+  if (!total) {
+    return 'background: #f3dede;';
+  }
+
+  const criticalDegrees = (counts.Critical || 0) / total * 360;
+  const unhealthyDegrees = criticalDegrees + (counts.Unhealthy || 0) / total * 360;
+  return [
+    'background: conic-gradient(',
+    `#f6c7c1 0deg ${criticalDegrees.toFixed(1)}deg, `,
+    `#fce7b7 ${criticalDegrees.toFixed(1)}deg ${unhealthyDegrees.toFixed(1)}deg, `,
+    `#dcefdc ${unhealthyDegrees.toFixed(1)}deg 360deg);`,
+  ].join('');
+}
+
+function updateFilteredOverviewStats() {
+  const visibleRows = [...document.querySelectorAll('[data-overview-row]')]
+    .filter((row) => row.style.display !== 'none');
+  const counts = { Healthy: 0, Unhealthy: 0, Critical: 0 };
+  let overdueStores = 0;
+  let expiringSkus = 0;
+
+  visibleRows.forEach((row) => {
+    const status = row.dataset.status || 'Healthy';
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status] += 1;
+    }
+    if (row.dataset.overdue === '1') {
+      overdueStores += 1;
+    }
+    expiringSkus += Number(row.dataset.expiringSkus || 0);
+  });
+
+  const total = visibleRows.length;
+  const countMap = {
+    critical_stores: counts.Critical,
+    unhealthy_stores: counts.Unhealthy,
+    overdue_stores: overdueStores,
+    expiring_skus: expiringSkus,
+    total,
+    critical: counts.Critical,
+    unhealthy: counts.Unhealthy,
+    healthy: counts.Healthy,
+  };
+  for (const [key, value] of Object.entries(countMap)) {
+    const element = document.querySelector(`[data-overview-count="${key}"]`);
+    if (element) {
+      element.textContent = value;
+    }
+  }
+
+  const donut = document.querySelector('[data-overview-donut]');
+  if (donut) {
+    donut.style.cssText = buildDonutStyle(counts, total);
+  }
 }
 
 function updateStatusRow(formId, row) {
@@ -130,6 +198,7 @@ async function submitFormAjax(formId) {
   });
 
   if (!response.ok) {
+    preserveScrollForCurrentPage();
     form.submit();
     return;
   }
@@ -149,6 +218,7 @@ function submitInlineForm(formId) {
   submitFormAjax(formId).catch(() => {
     const form = document.getElementById(formId);
     if (form) {
+      preserveScrollForCurrentPage();
       form.submit();
     }
   });
@@ -187,6 +257,7 @@ function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
     const matchesCity = !cityId || row.dataset.cityId === cityId;
     row.style.display = matchesQuery && matchesStore && matchesCity ? '' : 'none';
   });
+  updateFilteredOverviewStats();
 
   const emptyState = document.querySelector('.dashboard-filter-empty');
   if (emptyState) {
@@ -207,7 +278,111 @@ function applyCurrentDashboardFilter() {
   applyDashboardFilter(searchInput ? searchInput.value : '', storeSelect ? storeSelect.value : '', citySelect ? citySelect.value : '');
 }
 
+function updateInventorySummary(summary) {
+  for (const [key, value] of Object.entries(summary || {})) {
+    const element = document.querySelector(`[data-inventory-summary="${key}"]`);
+    if (element) {
+      element.textContent = value;
+    }
+  }
+}
+
+function updateInventoryRow(rowElement, item) {
+  if (!rowElement || !item) {
+    return;
+  }
+
+  const quantity = rowElement.querySelector('[data-field="inventory_quantity"]');
+  if (quantity) {
+    quantity.textContent = item.quantity ?? 0;
+  }
+
+  const minimum = rowElement.querySelector('[data-field="inventory_minimum"]');
+  if (minimum) {
+    minimum.textContent = item.emergency_minimum ?? 0;
+  }
+
+  const updated = rowElement.querySelector('[data-field="inventory_updated"]');
+  if (updated) {
+    updated.textContent = item.updated_display || 'Just now';
+  }
+
+  const warning = rowElement.querySelector('[data-field="inventory_warning"]');
+  if (warning) {
+    warning.hidden = !item.is_low_stock;
+  }
+
+  const exactInput = rowElement.querySelector('form[action$="/set"] input[name="quantity"]');
+  if (exactInput) {
+    exactInput.value = item.quantity ?? 0;
+  }
+
+  const minimumInput = rowElement.querySelector('form[action$="/minimum"] input[name="emergency_minimum"]');
+  if (minimumInput) {
+    minimumInput.value = item.emergency_minimum ?? 0;
+  }
+}
+
+async function submitInventorySave(form) {
+  const response = await fetch(form.action, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new FormData(form),
+  });
+
+  if (!response.ok) {
+    preserveScrollForCurrentPage();
+    form.submit();
+    return;
+  }
+
+  const data = await response.json();
+  updateInventoryRow(form.closest('[data-inventory-row]'), data.item);
+  updateInventorySummary(data.summary);
+}
+
+function bindInventorySteppers() {
+  document.querySelectorAll('[data-inventory-stepper]').forEach((stepper) => {
+    stepper.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-inventory-step]');
+      if (!button) {
+        return;
+      }
+
+      const row = button.closest('[data-inventory-row]');
+      const exactInput = row?.querySelector('form[action$="/set"] input[name="quantity"]');
+      if (!exactInput) {
+        return;
+      }
+
+      const currentValue = Number.parseInt(exactInput.value || '0', 10);
+      const adjustment = Number.parseInt(button.dataset.inventoryStep || '0', 10);
+      const safeCurrentValue = Number.isNaN(currentValue) ? 0 : currentValue;
+      const safeAdjustment = Number.isNaN(adjustment) ? 0 : adjustment;
+      exactInput.value = Math.max(safeCurrentValue + safeAdjustment, 0);
+      exactInput.focus();
+    });
+  });
+}
+
+function bindInventorySaves() {
+  document.querySelectorAll('[data-inventory-save-form]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitInventorySave(form).catch(() => {
+        preserveScrollForCurrentPage();
+        form.submit();
+      });
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  bindInventorySteppers();
+  bindInventorySaves();
+
   const searchBar = document.querySelector('.search-bar');
   if (!searchBar) {
     return;

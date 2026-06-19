@@ -84,7 +84,26 @@ body::before {
 .nav-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.nav-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.nav-group span {
+  color: var(--muted);
+  font: 700 0.68rem/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-group div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .nav-links a {
@@ -190,6 +209,55 @@ h2 {
 
 .section-heading {
   margin-bottom: 1.1rem;
+}
+
+.heading-with-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.live-indicator {
+  position: relative;
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-indicator::before,
+.live-indicator::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+}
+
+.live-indicator::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: #b80f1d;
+  box-shadow: 0 0 0 0 rgba(184, 15, 29, 0.28);
+}
+
+.live-indicator::after {
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 2px solid rgba(184, 15, 29, 0.28);
+  animation: live-pulse 1.35s ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.62);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 .section-heading-actions {
@@ -682,9 +750,114 @@ button:hover {
   border-radius: 12px;
 }
 
+.inventory-add-form {
+  max-width: 46rem;
+}
+
+.inventory-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.inventory-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(7rem, 0.25fr) minmax(7rem, 0.25fr);
+  align-items: start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.inventory-title {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.inventory-title span {
+  font-weight: 800;
+}
+
+.inventory-title small,
+.inventory-count span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.inventory-warning {
+  width: fit-content;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: #f6c7c1;
+  color: #7c1d14 !important;
+  font-weight: 800;
+}
+
+.inventory-count {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.inventory-count strong {
+  font-size: 1.55rem;
+}
+
+.inventory-unit {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.inventory-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.inventory-actions > form:last-child {
+  flex: 0 0 auto;
+}
+
+.stepper-form,
+.inventory-set-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.stepper-form {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+
+.inventory-set-form {
+  flex: 1 1 13rem;
+}
+
+.inventory-set-form label {
+  flex: 1 1 8rem;
+  min-width: min(100%, 8rem);
+}
+
+.inventory-set-form input {
+  padding: 0.62rem 0.75rem;
+  border-radius: 12px;
+}
+
 .compact-button {
   padding: 0.66rem 0.9rem;
   font-size: 0.86rem;
+}
+
+.secondary-button {
+  color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(155, 28, 28, 0.16);
+  box-shadow: none;
 }
 
 .manage-item form {
@@ -1036,7 +1209,13 @@ tbody tr.stale-row:hover {
   }
 
   .assignment-row,
-  .assignment-sku {
+  .assignment-sku,
+  .inventory-row {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-actions {
+    display: grid;
     grid-template-columns: 1fr;
   }
 
@@ -1051,6 +1230,15 @@ tbody tr.stale-row:hover {
   .capacity-form {
     align-items: stretch;
     margin-left: 0;
+  }
+
+  .stepper-form,
+  .inventory-set-form {
+    display: grid;
+  }
+
+  .inventory-actions > form:last-child {
+    flex: auto;
   }
 
   .capacity-form input {
