@@ -7,6 +7,67 @@ function updateSummary(summary) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[character]));
+}
+
+function updateStoreOverview(overview) {
+  if (!overview) {
+    return;
+  }
+
+  const countMap = {
+    critical_stores: overview.critical_stores,
+    unhealthy_stores: overview.unhealthy_stores,
+    overdue_stores: overview.overdue_stores,
+    expiring_skus: overview.expiring_skus,
+    total: overview.total,
+    critical: overview.counts?.Critical,
+    unhealthy: overview.counts?.Unhealthy,
+    healthy: overview.counts?.Healthy,
+  };
+  for (const [key, value] of Object.entries(countMap)) {
+    const element = document.querySelector(`[data-overview-count="${key}"]`);
+    if (element) {
+      element.textContent = value ?? 0;
+    }
+  }
+
+  const donut = document.querySelector('[data-overview-donut]');
+  if (donut && overview.donut_style) {
+    donut.style.cssText = overview.donut_style;
+  }
+
+  const body = document.querySelector('[data-store-overview-body]');
+  if (!body) {
+    return;
+  }
+
+  const rows = overview.rows || [];
+  if (!rows.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="7" class="empty-state">No store status available yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map((row) => `
+    <tr data-overview-row data-store-id="${escapeHtml(row.store_id)}">
+      <td data-label="Store">${escapeHtml(row.store_name)}</td>
+      <td data-label="Status"><span class="status-pill status-${escapeHtml(row.status_lower)}">${escapeHtml(row.status)}</span></td>
+      <td data-label="Critical SKUs">${escapeHtml(row.critical_skus)}</td>
+      <td data-label="Expiring">${escapeHtml(row.expiring_total)}</td>
+      <td data-label="Last visit">${escapeHtml(row.last_visit_display)}</td>
+      <td data-label="Monthly visits">${escapeHtml(row.monthly_visits_made)}/${escapeHtml(row.monthly_expected_by_today)} (${escapeHtml(row.monthly_completion_percent)}%)</td>
+      <td data-label="Action">${escapeHtml(row.action)}</td>
+    </tr>
+  `).join('');
+}
+
 function updateStatusRow(formId, row) {
   const form = document.getElementById(formId);
   if (!form || !row) {
@@ -79,7 +140,9 @@ async function submitFormAjax(formId) {
   if (criticalReportLink && data.critical_report_mailto) {
     criticalReportLink.href = data.critical_report_mailto;
   }
+  updateStoreOverview(data.store_overview);
   updateStatusRow(formId, data.row);
+  applyCurrentDashboardFilter();
 }
 
 function submitInlineForm(formId) {
@@ -115,12 +178,29 @@ function applyDashboardFilter(rawQuery, rawStoreId = '') {
     visibleCount += groupVisibleCount;
   });
 
+  document.querySelectorAll('[data-overview-row]').forEach((row) => {
+    const rowText = row.textContent.toLowerCase();
+    const matchesQuery = !query || rowText.includes(query);
+    const matchesStore = !storeId || row.dataset.storeId === storeId;
+    row.style.display = matchesQuery && matchesStore ? '' : 'none';
+  });
+
   const emptyState = document.querySelector('.dashboard-filter-empty');
   if (emptyState) {
     emptyState.style.display = visibleCount === 0 ? '' : 'none';
   }
 
   return visibleCount;
+}
+
+function applyCurrentDashboardFilter() {
+  const searchBar = document.querySelector('.search-bar');
+  if (!searchBar) {
+    return;
+  }
+  const searchInput = searchBar.querySelector('input[name="search"]');
+  const storeSelect = searchBar.querySelector('select[name="store_id"]');
+  applyDashboardFilter(searchInput ? searchInput.value : '', storeSelect ? storeSelect.value : '');
 }
 
 document.addEventListener('DOMContentLoaded', () => {

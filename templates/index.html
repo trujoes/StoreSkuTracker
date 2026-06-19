@@ -45,6 +45,73 @@
       <button type="submit">Filter</button>
     </form>
 
+    <section class="store-overview" aria-label="Store overview">
+      <div class="overview-kpis">
+        <div class="overview-kpi">
+          <span>Critical stores</span>
+          <strong data-overview-count="critical_stores">{{ store_overview.critical_stores }}</strong>
+        </div>
+        <div class="overview-kpi">
+          <span>Unhealthy stores</span>
+          <strong data-overview-count="unhealthy_stores">{{ store_overview.unhealthy_stores }}</strong>
+        </div>
+        <div class="overview-kpi">
+          <span>Visit overdue</span>
+          <strong data-overview-count="overdue_stores">{{ store_overview.overdue_stores }}</strong>
+        </div>
+        <div class="overview-kpi">
+          <span>Expiring SKUs</span>
+          <strong data-overview-count="expiring_skus">{{ store_overview.expiring_skus }}</strong>
+        </div>
+      </div>
+
+      <div class="overview-main">
+        <div class="overview-chart">
+          <div class="status-donut" data-overview-donut style="{{ store_overview.donut_style }}">
+            <span data-overview-count="total">{{ store_overview.total }}</span>
+          </div>
+          <div class="overview-legend">
+            <span><i class="legend-dot legend-critical"></i>Critical <strong data-overview-count="critical">{{ store_overview.counts.Critical }}</strong></span>
+            <span><i class="legend-dot legend-unhealthy"></i>Unhealthy <strong data-overview-count="unhealthy">{{ store_overview.counts.Unhealthy }}</strong></span>
+            <span><i class="legend-dot legend-healthy"></i>Healthy <strong data-overview-count="healthy">{{ store_overview.counts.Healthy }}</strong></span>
+          </div>
+        </div>
+
+        <div class="overview-table-wrap">
+          <table class="overview-table">
+            <thead>
+              <tr>
+                <th>Store</th>
+                <th>Status</th>
+                <th>Critical SKUs</th>
+                <th>Expiring</th>
+                <th>Last visit</th>
+                <th>Monthly visits</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody data-store-overview-body>
+              {% for row in store_overview.rows %}
+              <tr data-overview-row data-store-id="{{ row.store_id }}">
+                <td data-label="Store">{{ row.store_name }}</td>
+                <td data-label="Status"><span class="status-pill status-{{ row.status_lower }}">{{ row.status }}</span></td>
+                <td data-label="Critical SKUs">{{ row.critical_skus }}</td>
+                <td data-label="Expiring">{{ row.expiring_total }}</td>
+                <td data-label="Last visit">{{ row.last_visit_display }}</td>
+                <td data-label="Monthly visits">{{ row.monthly_visits_made }}/{{ row.monthly_expected_by_today }} ({{ row.monthly_completion_percent }}%)</td>
+                <td data-label="Action">{{ row.action }}</td>
+              </tr>
+              {% else %}
+              <tr class="empty-row">
+                <td colspan="7" class="empty-state">No store status available yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <div class="status-group-list">
       {% for group in dashboard_status_groups %}
       <section class="status-store-group" data-status-group data-store-id="{{ group.store_id }}">

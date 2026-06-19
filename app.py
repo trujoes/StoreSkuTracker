@@ -284,6 +284,7 @@ def get_monthly_visit_performance() -> dict:
         remaining_to_pace = max(expected_by_today_per_store - visits_made, 0)
         store_rows.append(
             {
+                "store_id": store["id"],
                 "store_name": store["name"],
                 "visits_made": visits_made,
                 "expected_by_today": expected_by_today_per_store,
@@ -404,6 +405,119 @@ def build_critical_report(rows: list[dict], visit_performance: dict | None = Non
     lines.append("")
 
     return subject, "\n".join(lines)
+
+
+def build_dashboard_store_overview(rows: list[dict], visit_performance: dict) -> dict:
+    groups: dict[int, dict] = {}
+    status_rank = {"Critical": 3, "Unhealthy": 2, "Healthy": 1}
+    monthly_by_store = {row["store_id"]: row for row in visit_performance["store_rows"]}
+
+    for row in rows:
+        group = groups.get(row["store_id"])
+        if group is None:
+            group = {
+                "store_id": row["store_id"],
+                "store_name": row["store_name"],
+                "sku_count": 0,
+                "critical_skus": 0,
+                "unhealthy_skus": 0,
+                "expiring_skus": 0,
+                "expiring_total": 0,
+                "is_overdue": False,
+                "last_visit": None,
+                "last_visit_display": "No visit",
+                "last_visit_employee": "No visit",
+                "status": "Healthy",
+            }
+            groups[row["store_id"]] = group
+
+        group["sku_count"] += 1
+        if row["status"] == "Critical":
+            group["critical_skus"] += 1
+        elif row["status"] == "Unhealthy":
+            group["unhealthy_skus"] += 1
+        if (row["expiring_count"] or 0) >= 1:
+            group["expiring_skus"] += 1
+            group["expiring_total"] += row["expiring_count"] or 0
+        if row["is_stale"]:
+            group["is_overdue"] = True
+        if status_rank[row["status"]] > status_rank[group["status"]]:
+            group["status"] = row["status"]
+        if row["last_visit"] and (group["last_visit"] is None or row["last_visit"] > group["last_visit"]):
+            group["last_visit"] = row["last_visit"]
+            group["last_visit_display"] = row["last_visit_display"]
+            group["last_visit_employee"] = row["employee_name"] or "No visit"
+
+    overview_rows = []
+    counts = {"Healthy": 0, "Unhealthy": 0, "Critical": 0}
+    for group in groups.values():
+        monthly = monthly_by_store.get(
+            group["store_id"],
+            {
+                "visits_made": 0,
+                "expected_by_today": 0,
+                "completion_percent": 0,
+                "remaining_to_pace": 0,
+                "status": "Behind plan",
+            },
+        )
+        counts[group["status"]] += 1
+        action_parts = []
+        if group["expiring_skus"]:
+            action_parts.append("expiry action")
+        if group["is_overdue"]:
+            action_parts.append("visit overdue")
+        if monthly["remaining_to_pace"]:
+            action_parts.append("monthly visits behind")
+        if not action_parts:
+            action_parts.append("maintain pace")
+
+        overview_rows.append(
+            {
+                **group,
+                "status_lower": group["status"].lower(),
+                "monthly_visits_made": monthly["visits_made"],
+                "monthly_expected_by_today": monthly["expected_by_today"],
+                "monthly_completion_percent": monthly["completion_percent"],
+                "monthly_remaining_to_pace": monthly["remaining_to_pace"],
+                "monthly_status": monthly["status"],
+                "action": ", ".join(action_parts),
+            }
+        )
+
+    overview_rows.sort(
+        key=lambda row: (
+            -status_rank[row["status"]],
+            -row["expiring_skus"],
+            -row["monthly_remaining_to_pace"],
+            row["store_name"].lower(),
+        )
+    )
+
+    total = len(overview_rows)
+    if total:
+        critical_degrees = counts["Critical"] / total * 360
+        unhealthy_degrees = critical_degrees + counts["Unhealthy"] / total * 360
+        donut_style = (
+            "background: conic-gradient("
+            f"#f6c7c1 0deg {critical_degrees:.1f}deg, "
+            f"#fce7b7 {critical_degrees:.1f}deg {unhealthy_degrees:.1f}deg, "
+            f"#dcefdc {unhealthy_degrees:.1f}deg 360deg);"
+        )
+    else:
+        donut_style = "background: #f3dede;"
+
+    return {
+        "rows": overview_rows,
+        "counts": counts,
+        "total": total,
+        "critical_stores": counts["Critical"],
+        "unhealthy_stores": counts["Unhealthy"],
+        "healthy_stores": counts["Healthy"],
+        "overdue_stores": sum(1 for row in overview_rows if row["is_overdue"]),
+        "expiring_skus": sum(row["expiring_skus"] for row in overview_rows),
+        "donut_style": donut_style,
+    }
 
 
 def build_mailto_url(subject: str, body: str) -> str:
@@ -542,12 +656,15 @@ def dashboard():
         "skus_active": len(skus),
         "mapped_skus": db.execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
     }
-    critical_report_subject, critical_report_body = build_critical_report(current_status_rows)
+    visit_performance = get_monthly_visit_performance()
+    store_overview = build_dashboard_store_overview(current_status_rows, visit_performance)
+    critical_report_subject, critical_report_body = build_critical_report(current_status_rows, visit_performance)
 
     return render_template(
         "index.html",
         current_status_rows=current_status_rows,
         dashboard_status_groups=dashboard_status_groups,
+        store_overview=store_overview,
         recent_visits=recent_visits,
         summary=summary,
         critical_report_mailto=build_mailto_url(critical_report_subject, critical_report_body),
@@ -818,12 +935,15 @@ def record_visit():
             "skus_active": get_db().execute("SELECT COUNT(*) FROM skus").fetchone()[0],
             "mapped_skus": get_db().execute("SELECT COUNT(*) FROM store_skus").fetchone()[0],
         }
-        critical_report_subject, critical_report_body = build_critical_report(current_status_rows)
+        visit_performance = get_monthly_visit_performance()
+        store_overview = build_dashboard_store_overview(current_status_rows, visit_performance)
+        critical_report_subject, critical_report_body = build_critical_report(current_status_rows, visit_performance)
         return jsonify(
             {
                 "ok": True,
                 "row": updated_row,
                 "summary": summary,
+                "store_overview": store_overview,
                 "critical_report_mailto": build_mailto_url(critical_report_subject, critical_report_body),
             }
         )

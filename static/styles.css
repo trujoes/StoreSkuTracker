@@ -316,6 +316,124 @@ button:hover {
   line-height: 1.45;
 }
 
+.store-overview {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.overview-kpi {
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.overview-kpi span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+}
+
+.overview-kpi strong {
+  font-size: 1.55rem;
+}
+
+.overview-main {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.22fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.overview-chart {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.status-donut {
+  width: 8.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.status-donut::after {
+  content: "";
+  position: absolute;
+  inset: 1.55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.status-donut span {
+  position: relative;
+  z-index: 1;
+  font-weight: 800;
+  font-size: 1.45rem;
+}
+
+.overview-legend {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.overview-legend span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.legend-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  margin-right: auto;
+}
+
+.legend-critical {
+  background: #f6c7c1;
+}
+
+.legend-unhealthy {
+  background: #fce7b7;
+}
+
+.legend-healthy {
+  background: #dcefdc;
+}
+
+.overview-table-wrap {
+  overflow-x: auto;
+}
+
+.overview-table {
+  min-width: 760px;
+}
+
+.overview-table th,
+.overview-table td {
+  padding: 0.7rem 0.6rem;
+}
+
 .status-group-list {
   display: grid;
   gap: 0.9rem;
@@ -733,6 +851,8 @@ tbody tr.stale-row:hover {
   .catalog-grid,
   .catalog-list,
   .search-bar,
+  .overview-kpis,
+  .overview-main,
   .status-note,
   .status-sku-row,
   .status-sku-metrics {
@@ -766,6 +886,10 @@ tbody tr.stale-row:hover {
   }
 
   .table-wrap {
+    overflow: visible;
+  }
+
+  .overview-table-wrap {
     overflow: visible;
   }
 
