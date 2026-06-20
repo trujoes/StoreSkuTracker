@@ -61,13 +61,6 @@
             </label>
             <button type="submit" class="compact-button">Save</button>
           </form>
-          <form action="{{ url_for('set_inventory_minimum', item_id=row.id) }}" method="post" class="inventory-set-form" data-inventory-save-form>
-            <label>
-              Min
-              <input type="number" name="emergency_minimum" min="0" value="{{ row.emergency_minimum }}" required>
-            </label>
-            <button type="submit" class="compact-button">Save min</button>
-          </form>
           <form action="{{ url_for('delete_inventory_item', item_id=row.id) }}" method="post">
             <button type="submit" class="danger compact-button" onclick="return confirm('Delete this inventory item?')">Delete</button>
           </form>

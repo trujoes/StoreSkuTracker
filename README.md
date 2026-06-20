@@ -8,7 +8,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Set a recommended shelf count for each store/SKU assignment
 - Edit recommended shelf counts directly from the assignment list
 - Update shelf count and expiring count inline from the dashboard
-- Maintain independent B2B inventory items with fixed units, emergency minimums, low-stock counts, history, quick plus/minus, and exact quantity controls
+- Maintain independent B2B inventory items with fixed units, fixed emergency minimums, low-stock counts, history, quick plus/minus, and exact quantity controls
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
@@ -49,7 +49,7 @@ The app has two main pages:
 - `/inventory` lets you add independent inventory items and maintain central quantities for B2B clients.
 - `/manage` lets you maintain the active store list, SKU list, and which SKUs each store carries.
 
-Inventory items are separate from the `/manage` SKU catalog. Adding or deleting inventory items does not add or delete store-tracking SKUs. Each inventory item has a unit selected when it is created (`KG`, `Litres`, or `Bottles`), and that unit is not edited from the item row afterward. Low stock is calculated per item using its emergency minimum.
+Inventory items are separate from the `/manage` SKU catalog. Adding or deleting inventory items does not add or delete store-tracking SKUs. Each inventory item has a unit and emergency minimum selected when it is created, and those values are not edited from the item row afterward. Low stock is calculated per item using its emergency minimum.
 
 Dashboard updates create new records in `stock_visits`. The current status table is calculated from the latest retained visit for each store/SKU pair.
 
@@ -72,7 +72,7 @@ Main tables:
 - `stores`: active stores available for assignment, with city mapping required for new stores
 - `cities`: active city names available for store mapping
 - `skus`: active SKU names
-- `inventory_items`: independent B2B inventory item names, fixed units, current quantities, emergency minimums, and last update time
+- `inventory_items`: independent B2B inventory item names, fixed units, fixed emergency minimums, current quantities, and last update time
 - `inventory_history`: latest 7 days of inventory quantity/minimum changes
 - `employees`: active employees available in the dashboard save dropdown
 - `store_skus`: active store-to-SKU assignments with recommended shelf counts and mapping creation time

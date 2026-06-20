@@ -317,10 +317,6 @@ function updateInventoryRow(rowElement, item) {
     exactInput.value = item.quantity ?? 0;
   }
 
-  const minimumInput = rowElement.querySelector('form[action$="/minimum"] input[name="emergency_minimum"]');
-  if (minimumInput) {
-    minimumInput.value = item.emergency_minimum ?? 0;
-  }
 }
 
 async function submitInventorySave(form) {

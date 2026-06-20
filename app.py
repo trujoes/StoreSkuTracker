@@ -928,7 +928,6 @@ def add_inventory_item():
         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(name) DO UPDATE SET
             quantity = inventory_items.quantity + excluded.quantity,
-            emergency_minimum = excluded.emergency_minimum,
             updated_at = CURRENT_TIMESTAMP
         """,
         (name, quantity_value, unit, emergency_minimum_value),
@@ -1137,46 +1136,6 @@ def set_inventory_item(item_id: int):
         item_row["emergency_minimum"],
         item_row["emergency_minimum"],
         "Exact quantity saved",
-    )
-    db.commit()
-    cleanup_old_inventory_history(db)
-    db.commit()
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return build_inventory_update_response(db, item_id)
-    return redirect(url_for("inventory"))
-
-
-@app.route("/inventory/<int:item_id>/minimum", methods=["POST"])
-def set_inventory_minimum(item_id: int):
-    emergency_minimum = request.form.get("emergency_minimum", "").strip()
-    try:
-        emergency_minimum_value = int(emergency_minimum or 0)
-    except ValueError:
-        return redirect(url_for("inventory"))
-    if emergency_minimum_value < 0:
-        return redirect(url_for("inventory"))
-
-    db = get_db()
-    item_row = db.execute(
-        "SELECT id, name, quantity, emergency_minimum FROM inventory_items WHERE id = ?",
-        (item_id,),
-    ).fetchone()
-    if item_row is None:
-        return redirect(url_for("inventory"))
-    db.execute(
-        "UPDATE inventory_items SET emergency_minimum = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (emergency_minimum_value, item_id),
-    )
-    record_inventory_history(
-        db,
-        item_id,
-        item_row["name"],
-        "Set emergency minimum",
-        item_row["quantity"],
-        item_row["quantity"],
-        item_row["emergency_minimum"],
-        emergency_minimum_value,
-        "Emergency minimum saved",
     )
     db.commit()
     cleanup_old_inventory_history(db)

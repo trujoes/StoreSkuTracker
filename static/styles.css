@@ -803,7 +803,21 @@ button:hover {
 }
 
 .inventory-count strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.inventory-count [data-field="inventory_quantity"],
+.inventory-count [data-field="inventory_minimum"] {
+  color: var(--accent-strong);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .inventory-unit {
@@ -1045,34 +1059,28 @@ tbody tr.stale-row:hover {
   }
 
   .nav-links {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
+    display: grid;
     width: 100%;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
-    scrollbar-width: none;
-  }
-
-  .nav-links::-webkit-scrollbar {
-    display: none;
+    gap: 0.75rem;
   }
 
   .nav-group {
-    display: contents;
+    display: grid;
+    width: 100%;
+    gap: 0.35rem;
   }
 
   .nav-group span {
-    display: none;
+    display: block;
   }
 
   .nav-group div {
-    display: contents;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.5rem;
   }
 
   .nav-links a {
-    flex: 0 0 auto;
     min-height: 2.7rem;
     padding: 0.68rem 0.75rem;
     border-radius: 14px;
