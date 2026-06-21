@@ -25,7 +25,7 @@
   </div>
 </section>
 
-<section class="dashboard-layout">
+<section class="dashboard-layout inventory-page-layout">
   <article class="card list-card full-span">
     <div class="section-heading">
       <p class="eyebrow">Stock</p>
@@ -40,15 +40,15 @@
           <small>Updated <span data-field="inventory_updated">{{ row.updated_at | relative_time_display }}</span></small>
           <small class="inventory-warning" data-field="inventory_warning" {% if row.quantity > row.emergency_minimum %}hidden{% endif %}>Low stock</small>
         </div>
-        <div class="inventory-count">
+        <div class="inventory-count inventory-current-count">
           <span>Current inventory</span>
           <strong><span data-field="inventory_quantity">{{ row.quantity }}</span> <span class="inventory-unit">{{ row.unit }}</span></strong>
         </div>
-        <div class="inventory-count">
+        <div class="inventory-count inventory-min-count">
           <span>Emergency minimum</span>
           <strong data-field="inventory_minimum">{{ row.emergency_minimum }}</strong>
         </div>
-        <div class="inventory-actions">
+        <div class="inventory-actions inventory-desktop-actions">
           <div class="stepper-form" data-inventory-stepper>
             <button type="button" data-inventory-step="-1" class="compact-button secondary-button">-1</button>
             <button type="button" data-inventory-step="1" class="compact-button">+1</button>
@@ -62,6 +62,17 @@
             <button type="submit" class="compact-button">Save</button>
           </form>
           <form action="{{ url_for('delete_inventory_item', item_id=row.id) }}" method="post">
+            <button type="submit" class="danger compact-button" onclick="return confirm('Delete this inventory item?')">Delete</button>
+          </form>
+        </div>
+        <div class="inventory-mobile-actions">
+          <form action="{{ url_for('set_inventory_item', item_id=row.id) }}" method="post" class="inventory-mobile-quantity" data-inventory-save-form data-inventory-stepper>
+            <button type="button" data-inventory-step="-1" class="inventory-step-button secondary-button" aria-label="Decrease quantity">&minus;</button>
+            <input class="inventory-mobile-input" type="number" name="quantity" min="0" value="{{ row.quantity }}" aria-label="Current inventory quantity" required>
+            <button type="button" data-inventory-step="1" class="inventory-step-button secondary-button" aria-label="Increase quantity">+</button>
+            <button type="submit" class="inventory-mobile-save">Save</button>
+          </form>
+          <form action="{{ url_for('delete_inventory_item', item_id=row.id) }}" method="post" class="inventory-mobile-delete">
             <button type="submit" class="danger compact-button" onclick="return confirm('Delete this inventory item?')">Delete</button>
           </form>
         </div>

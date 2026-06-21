@@ -312,10 +312,9 @@ function updateInventoryRow(rowElement, item) {
     warning.hidden = !item.is_low_stock;
   }
 
-  const exactInput = rowElement.querySelector('form[action$="/set"] input[name="quantity"]');
-  if (exactInput) {
-    exactInput.value = item.quantity ?? 0;
-  }
+  rowElement.querySelectorAll('form[action$="/set"] input[name="quantity"]').forEach((input) => {
+    input.value = item.quantity ?? 0;
+  });
 
 }
 
@@ -348,7 +347,8 @@ function bindInventorySteppers() {
       }
 
       const row = button.closest('[data-inventory-row]');
-      const exactInput = row?.querySelector('form[action$="/set"] input[name="quantity"]');
+      const exactInputs = row ? [...row.querySelectorAll('form[action$="/set"] input[name="quantity"]')] : [];
+      const exactInput = exactInputs.find((input) => input.offsetParent !== null) || exactInputs[0];
       if (!exactInput) {
         return;
       }
