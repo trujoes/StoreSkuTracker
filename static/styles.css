@@ -869,6 +869,128 @@ button:hover {
   border-radius: 12px;
 }
 
+.delivery-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-form label:nth-of-type(4),
+.delivery-form label:nth-of-type(5),
+.delivery-form button {
+  grid-column: 1 / -1;
+}
+
+.delivery-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.delivery-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(155, 28, 28, 0.08);
+}
+
+.delivery-main {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.delivery-title {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.delivery-title span {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.delivery-title small,
+.delivery-completed {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.delivery-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.delivery-details p {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.delivery-details strong {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.delivery-status-form {
+  margin: 0;
+}
+
+.delivery-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.55rem;
+}
+
+.delivery-edit {
+  position: relative;
+}
+
+.delivery-edit summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.delivery-edit summary::-webkit-details-marker {
+  display: none;
+}
+
+.delivery-edit[open] {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.delivery-edit-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+  padding: 0.9rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(155, 28, 28, 0.1);
+}
+
+.delivery-edit-form label:nth-of-type(4),
+.delivery-edit-form label:nth-of-type(5),
+.delivery-edit-form button {
+  grid-column: 1 / -1;
+}
+
+.delivery-done {
+  opacity: 0.68;
+}
+
+.delivery-done .delivery-title span,
+.delivery-done .delivery-details p {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(155, 28, 28, 0.45);
+}
+
 .compact-button {
   padding: 0.66rem 0.9rem;
   font-size: 0.86rem;
@@ -1458,7 +1580,11 @@ tbody tr.stale-row:hover {
 
   .assignment-row,
   .assignment-sku,
-  .inventory-row {
+  .inventory-row,
+  .delivery-row,
+  .delivery-details,
+  .delivery-form,
+  .delivery-edit-form {
     grid-template-columns: 1fr;
   }
 
@@ -1547,6 +1673,28 @@ tbody tr.stale-row:hover {
     padding: 0.55rem 0.9rem;
   }
 
+  .delivery-row {
+    gap: 0.85rem;
+    padding: 0.9rem;
+  }
+
+  .delivery-details {
+    gap: 0.55rem;
+  }
+
+  .delivery-status-form {
+    width: 100%;
+  }
+
+  .delivery-actions {
+    justify-items: stretch;
+  }
+
+  .delivery-edit,
+  .delivery-edit summary {
+    width: 100%;
+  }
+
   .assignment-row {
     padding: 0.9rem;
   }
@@ -1600,11 +1748,13 @@ tbody tr.stale-row:hover {
     border-radius: 0;
   }
 
-  .inventory-page-layout {
+  .inventory-page-layout,
+  .deliveries-page-layout {
     padding: 0 0.55rem;
   }
 
-  .inventory-page-layout .list-card {
+  .inventory-page-layout .list-card,
+  .deliveries-page-layout .list-card {
     border-left: 1px solid var(--panel-border);
     border-right: 1px solid var(--panel-border);
     border-radius: 16px;

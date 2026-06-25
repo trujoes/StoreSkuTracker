@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Deliveries{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Customer Deliveries</p>
+    <h1>Customer delivery tracker.</h1>
+    <p class="hero-copy">Track third-party courier and offline delivery work in one simple list.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <span>Total customer deliveries</span>
+      <strong>{{ delivery_rows|length }}</strong>
+    </div>
+    <div class="stat">
+      <span>Pending</span>
+      <strong>{{ pending_count }}</strong>
+    </div>
+    <div class="stat">
+      <span>Done</span>
+      <strong>{{ done_count }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-layout deliveries-page-layout">
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">Queue</p>
+      <h2>Current customer deliveries</h2>
+    </div>
+    <div class="delivery-list">
+      {% for row in delivery_rows %}
+      <div class="delivery-row {% if row.is_done %}delivery-done{% endif %}">
+        <div class="delivery-main">
+          <div class="delivery-title">
+            <span>{{ row.items or 'No items added' }}</span>
+            <small>
+              {% if row.delivery_type == 'third_party' %}
+              3rd party
+              {% else %}
+              Offline delivery
+              {% endif %}
+              · Added {{ row.created_at | relative_time_display }}
+            </small>
+          </div>
+          <div class="delivery-details">
+            <p><strong>Name</strong>{{ row.customer_name or '—' }}</p>
+            <p><strong>Address and phone</strong>{{ row.address_phone or '—' }}</p>
+            <p><strong>Remarks</strong>{{ row.remarks or '—' }}</p>
+          </div>
+          {% if row.is_done %}
+          <small class="delivery-completed">Done {{ row.completed_at | relative_time_display }}</small>
+          {% endif %}
+        </div>
+        <div class="delivery-actions">
+          <details class="delivery-edit">
+            <summary class="compact-button secondary-button">Edit</summary>
+            <form action="{{ url_for('edit_delivery', delivery_id=row.id) }}" method="post" class="delivery-edit-form">
+              <label>
+                Delivery type
+                <select name="delivery_type" required>
+                  {% for value, label in delivery_types %}
+                  <option value="{{ value }}" {% if row.delivery_type == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Items
+                <input type="text" name="items" value="{{ row.items or '' }}">
+              </label>
+              <label>
+                Name
+                <input type="text" name="customer_name" value="{{ row.customer_name or '' }}">
+              </label>
+              <label>
+                Address and phone
+                <textarea name="address_phone" rows="3">{{ row.address_phone or '' }}</textarea>
+              </label>
+              <label>
+                Remarks
+                <textarea name="remarks" rows="3">{{ row.remarks or '' }}</textarea>
+              </label>
+              <button type="submit" class="compact-button">Save edit</button>
+            </form>
+          </details>
+          <form action="{{ url_for('update_delivery_status', delivery_id=row.id) }}" method="post" class="delivery-status-form">
+            {% if row.is_done %}
+            <input type="hidden" name="is_done" value="0">
+            <button type="submit" class="compact-button secondary-button">Reopen</button>
+            {% else %}
+            <input type="hidden" name="is_done" value="1">
+            <button type="submit" class="compact-button">Mark done</button>
+            {% endif %}
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-state">No customer deliveries added yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card list-card full-span">
+    <div class="section-heading section-heading-actions">
+      <div>
+        <p class="eyebrow">New</p>
+        <h2>Add customer delivery</h2>
+      </div>
+    </div>
+    <form action="{{ url_for('add_delivery') }}" method="post" class="catalog-form delivery-form">
+      <label>
+        Delivery type
+        <select name="delivery_type" required>
+          <option value="" disabled selected>Select type</option>
+          {% for value, label in delivery_types %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Items
+        <input type="text" name="items" placeholder="Coffee concentrate, beans">
+      </label>
+      <label>
+        Name
+        <input type="text" name="customer_name" placeholder="Customer or store name">
+      </label>
+      <label>
+        Address and phone
+        <textarea name="address_phone" rows="3" placeholder="Address, phone number"></textarea>
+      </label>
+      <label>
+        Remarks
+        <textarea name="remarks" rows="3" placeholder="Courier details, delivery notes"></textarea>
+      </label>
+      <button type="submit">Add customer delivery</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

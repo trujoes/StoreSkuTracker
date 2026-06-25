@@ -9,6 +9,7 @@ Small Flask + SQLite app for tracking store-level SKU shelf counts and expiry ch
 - Edit recommended shelf counts directly from the assignment list
 - Update shelf count and expiring count inline from the dashboard
 - Maintain independent B2B inventory items with fixed units, fixed emergency minimums, low-stock counts, history, quick plus/minus, and exact quantity controls
+- Track and edit 3rd-party and offline customer deliveries with optional item, name, address/phone, and remarks fields
 - Treat blank shelf/expiring count inputs as `0`
 - Filter the dashboard by store, SKU, or employee
 - Filter the dashboard by store using a dropdown
@@ -47,6 +48,7 @@ The app has two main pages:
 
 - `/dashboard` shows the current shelf and expiry status for each configured store/SKU pair.
 - `/inventory` lets you add independent inventory items and maintain central quantities for B2B clients.
+- `/deliveries` shows Customer Deliveries, where you can add or edit 3rd-party/offline delivery tasks and mark delivered items as done.
 - `/manage` lets you maintain the active store list, SKU list, and which SKUs each store carries.
 
 Inventory items are separate from the `/manage` SKU catalog. Adding or deleting inventory items does not add or delete store-tracking SKUs. Each inventory item has a unit and emergency minimum selected when it is created, and those values are not edited from the item row afterward. Low stock is calculated per item using its emergency minimum.
@@ -74,6 +76,7 @@ Main tables:
 - `skus`: active SKU names
 - `inventory_items`: independent B2B inventory item names, fixed units, fixed emergency minimums, current quantities, and last update time
 - `inventory_history`: latest 7 days of inventory quantity/minimum changes
+- `deliveries`: delivery tasks, delivery type, optional delivery details, and completion status
 - `employees`: active employees available in the dashboard save dropdown
 - `store_skus`: active store-to-SKU assignments with recommended shelf counts and mapping creation time
 - `stock_visits`: historical shelf count and expiry count records

@@ -14,6 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 DATABASE_PATH = INSTANCE_DIR / "stock_tracker.sqlite3"
 INVENTORY_UNITS = ("KG", "Litres", "Bottles")
+DELIVERY_TYPES = (
+    ("third_party", "3rd party"),
+    ("offline", "Offline delivery"),
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "stock-tracker-local-dev"
@@ -140,6 +144,22 @@ def init_db() -> None:
                 emergency_minimum_after INTEGER,
                 note TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS deliveries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                delivery_type TEXT NOT NULL,
+                items TEXT,
+                customer_name TEXT,
+                address_phone TEXT,
+                remarks TEXT,
+                is_done INTEGER NOT NULL DEFAULT 0 CHECK (is_done IN (0, 1)),
+                completed_at TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
@@ -951,6 +971,102 @@ def add_inventory_item():
     cleanup_old_inventory_history(db)
     db.commit()
     return redirect(url_for("inventory"))
+
+
+@app.route("/deliveries", methods=["GET"])
+def deliveries():
+    rows = get_db().execute(
+        """
+        SELECT id, delivery_type, items, customer_name, address_phone, remarks,
+               is_done, completed_at, created_at, updated_at
+        FROM deliveries
+        ORDER BY is_done ASC, datetime(created_at) DESC, id DESC
+        """
+    ).fetchall()
+    pending_count = sum(1 for row in rows if not row["is_done"])
+    done_count = sum(1 for row in rows if row["is_done"])
+    return render_template(
+        "deliveries.html",
+        delivery_rows=rows,
+        delivery_types=DELIVERY_TYPES,
+        pending_count=pending_count,
+        done_count=done_count,
+    )
+
+
+@app.route("/deliveries", methods=["POST"])
+def add_delivery():
+    delivery_type = request.form.get("delivery_type", "").strip()
+    valid_types = {value for value, _label in DELIVERY_TYPES}
+    if delivery_type not in valid_types:
+        return redirect(url_for("deliveries"))
+
+    items = request.form.get("items", "").strip()
+    customer_name = request.form.get("customer_name", "").strip()
+    address_phone = request.form.get("address_phone", "").strip()
+    remarks = request.form.get("remarks", "").strip()
+
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO deliveries (
+            delivery_type, items, customer_name, address_phone, remarks
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (delivery_type, items, customer_name, address_phone, remarks),
+    )
+    db.commit()
+    return redirect(url_for("deliveries"))
+
+
+@app.route("/deliveries/<int:delivery_id>/status", methods=["POST"])
+def update_delivery_status(delivery_id: int):
+    done_value = request.form.get("is_done", "").strip()
+    is_done = 1 if done_value == "1" else 0
+    db = get_db()
+    db.execute(
+        """
+        UPDATE deliveries
+        SET is_done = ?,
+            completed_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (is_done, is_done, delivery_id),
+    )
+    db.commit()
+    return redirect(url_for("deliveries"))
+
+
+@app.route("/deliveries/<int:delivery_id>/edit", methods=["POST"])
+def edit_delivery(delivery_id: int):
+    delivery_type = request.form.get("delivery_type", "").strip()
+    valid_types = {value for value, _label in DELIVERY_TYPES}
+    if delivery_type not in valid_types:
+        return redirect(url_for("deliveries"))
+
+    items = request.form.get("items", "").strip()
+    customer_name = request.form.get("customer_name", "").strip()
+    address_phone = request.form.get("address_phone", "").strip()
+    remarks = request.form.get("remarks", "").strip()
+
+    db = get_db()
+    db.execute(
+        """
+        UPDATE deliveries
+        SET delivery_type = ?,
+            items = ?,
+            customer_name = ?,
+            address_phone = ?,
+            remarks = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (delivery_type, items, customer_name, address_phone, remarks, delivery_id),
+    )
+    db.commit()
+    return redirect(url_for("deliveries"))
 
 
 @app.route("/manage", methods=["GET"])
