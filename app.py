@@ -163,6 +163,21 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS delivery_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                delivery_id INTEGER,
+                action TEXT NOT NULL,
+                employee_id INTEGER,
+                employee_name TEXT,
+                items TEXT,
+                customer_name TEXT,
+                note TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
         inventory_item_columns = {
             row[1] for row in connection.execute("PRAGMA table_info(inventory_items)").fetchall()
         }
@@ -290,6 +305,16 @@ def relative_time_display_filter(value: str) -> str:
     return relative_time_display(value)
 
 
+def get_open_delivery_count() -> int:
+    row = get_db().execute("SELECT COUNT(*) FROM deliveries WHERE is_done = 0").fetchone()
+    return int(row[0] if row else 0)
+
+
+@app.context_processor
+def inject_open_delivery_count() -> dict[str, int]:
+    return {"open_delivery_count": get_open_delivery_count()}
+
+
 def is_visit_stale(last_visit: str | None) -> bool:
     return is_older_than_hours(last_visit, 72)
 
@@ -391,6 +416,50 @@ def record_inventory_history(
             quantity_after,
             emergency_minimum_before,
             emergency_minimum_after,
+            note,
+        ),
+    )
+
+
+def get_employee_for_form(db: sqlite3.Connection, employee_id: str) -> sqlite3.Row | None:
+    if not employee_id:
+        return None
+    try:
+        employee_id_value = int(employee_id)
+    except ValueError:
+        return None
+    return db.execute("SELECT id, name FROM employees WHERE id = ?", (employee_id_value,)).fetchone()
+
+
+def record_delivery_history(
+    db: sqlite3.Connection,
+    delivery_id: int,
+    action: str,
+    employee_row: sqlite3.Row | None,
+    items: str | None,
+    customer_name: str | None,
+    note: str = "",
+) -> None:
+    db.execute(
+        """
+        INSERT INTO delivery_history (
+            delivery_id,
+            action,
+            employee_id,
+            employee_name,
+            items,
+            customer_name,
+            note
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            delivery_id,
+            action,
+            employee_row["id"] if employee_row else None,
+            employee_row["name"] if employee_row else None,
+            items,
+            customer_name,
             note,
         ),
     )
@@ -975,7 +1044,8 @@ def add_inventory_item():
 
 @app.route("/deliveries", methods=["GET"])
 def deliveries():
-    rows = get_db().execute(
+    db = get_db()
+    rows = db.execute(
         """
         SELECT id, delivery_type, items, customer_name, address_phone, remarks,
                is_done, completed_at, created_at, updated_at
@@ -983,11 +1053,30 @@ def deliveries():
         ORDER BY is_done ASC, datetime(created_at) DESC, id DESC
         """
     ).fetchall()
+    employees = db.execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()
+    history_rows = db.execute(
+        """
+        SELECT
+            delivery_history.id,
+            delivery_history.delivery_id,
+            delivery_history.action,
+            delivery_history.employee_name,
+            delivery_history.items,
+            delivery_history.customer_name,
+            delivery_history.note,
+            delivery_history.created_at
+        FROM delivery_history
+        ORDER BY datetime(delivery_history.created_at) DESC, delivery_history.id DESC
+        LIMIT 30
+        """
+    ).fetchall()
     pending_count = sum(1 for row in rows if not row["is_done"])
     done_count = sum(1 for row in rows if row["is_done"])
     return render_template(
         "deliveries.html",
         delivery_rows=rows,
+        history_rows=history_rows,
+        employees=employees,
         delivery_types=DELIVERY_TYPES,
         pending_count=pending_count,
         done_count=done_count,
@@ -1007,7 +1096,7 @@ def add_delivery():
     remarks = request.form.get("remarks", "").strip()
 
     db = get_db()
-    db.execute(
+    cursor = db.execute(
         """
         INSERT INTO deliveries (
             delivery_type, items, customer_name, address_phone, remarks
@@ -1015,6 +1104,14 @@ def add_delivery():
         VALUES (?, ?, ?, ?, ?)
         """,
         (delivery_type, items, customer_name, address_phone, remarks),
+    )
+    record_delivery_history(
+        db,
+        cursor.lastrowid,
+        "Added",
+        None,
+        items,
+        customer_name,
     )
     db.commit()
     return redirect(url_for("deliveries"))
@@ -1024,7 +1121,15 @@ def add_delivery():
 def update_delivery_status(delivery_id: int):
     done_value = request.form.get("is_done", "").strip()
     is_done = 1 if done_value == "1" else 0
+    employee_id = request.form.get("employee_id", "").strip()
     db = get_db()
+    delivery_row = db.execute(
+        "SELECT id, items, customer_name FROM deliveries WHERE id = ?",
+        (delivery_id,),
+    ).fetchone()
+    if delivery_row is None:
+        return redirect(url_for("deliveries"))
+    employee_row = get_employee_for_form(db, employee_id)
     db.execute(
         """
         UPDATE deliveries
@@ -1034,6 +1139,14 @@ def update_delivery_status(delivery_id: int):
         WHERE id = ?
         """,
         (is_done, is_done, delivery_id),
+    )
+    record_delivery_history(
+        db,
+        delivery_id,
+        "Marked done" if is_done else "Reopened",
+        employee_row,
+        delivery_row["items"],
+        delivery_row["customer_name"],
     )
     db.commit()
     return redirect(url_for("deliveries"))
@@ -1050,8 +1163,10 @@ def edit_delivery(delivery_id: int):
     customer_name = request.form.get("customer_name", "").strip()
     address_phone = request.form.get("address_phone", "").strip()
     remarks = request.form.get("remarks", "").strip()
+    employee_id = request.form.get("employee_id", "").strip()
 
     db = get_db()
+    employee_row = get_employee_for_form(db, employee_id)
     db.execute(
         """
         UPDATE deliveries
@@ -1064,6 +1179,14 @@ def edit_delivery(delivery_id: int):
         WHERE id = ?
         """,
         (delivery_type, items, customer_name, address_phone, remarks, delivery_id),
+    )
+    record_delivery_history(
+        db,
+        delivery_id,
+        "Edited",
+        employee_row,
+        items,
+        customer_name,
     )
     db.commit()
     return redirect(url_for("deliveries"))

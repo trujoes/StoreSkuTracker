@@ -30,7 +30,19 @@
             <span>B2B & Retail</span>
             <div>
               <a href="{{ url_for('inventory') }}">SKU Inventory</a>
-              <a href="{{ url_for('deliveries') }}">Customer Deliveries</a>
+              <a
+                href="{{ url_for('deliveries') }}"
+                class="{% if open_delivery_count %}nav-delivery-alert{% endif %}"
+                {% if open_delivery_count %}aria-label="{{ open_delivery_count }} open customer deliveries"{% endif %}
+              >
+                <span>Customer Deliveries</span>
+                {% if open_delivery_count %}
+                <strong class="nav-delivery-badge">
+                  <span class="nav-delivery-pulse" aria-hidden="true"></span>
+                  {{ open_delivery_count }} open
+                </strong>
+                {% endif %}
+              </a>
             </div>
           </div>
         </nav>

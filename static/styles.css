@@ -93,7 +93,7 @@ body::before {
   gap: 0.35rem;
 }
 
-.nav-group span {
+.nav-group > span {
   color: var(--muted);
   font: 700 0.68rem/1 "IBM Plex Mono", monospace;
   letter-spacing: 0.08em;
@@ -110,6 +110,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   text-decoration: none;
   color: var(--accent-strong);
   background: rgba(255, 255, 255, 0.7);
@@ -117,6 +118,48 @@ body::before {
   padding: 0.62rem 0.95rem;
   border-radius: 999px;
   font-weight: 700;
+}
+
+.nav-delivery-alert {
+  background: #fff1c2;
+  border-color: rgba(190, 112, 0, 0.34);
+  color: #8b3d00;
+  box-shadow: 0 10px 24px rgba(190, 112, 0, 0.18);
+}
+
+.nav-delivery-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.35rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #d72638;
+  font-size: 0.76rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nav-delivery-pulse {
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 999px;
+  background: #ffffff;
+  animation: delivery-pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes delivery-pulse {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: scale(0.82);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 .card {
@@ -936,7 +979,17 @@ button:hover {
 }
 
 .delivery-status-form {
+  display: grid;
+  gap: 0.45rem;
   margin: 0;
+}
+
+.delivery-status-form select {
+  min-width: 10rem;
+  max-width: 12rem;
+  padding: 0.58rem 0.72rem;
+  border-radius: 12px;
+  font-size: 0.82rem;
 }
 
 .delivery-actions {
@@ -976,6 +1029,7 @@ button:hover {
 
 .delivery-edit-form label:nth-of-type(4),
 .delivery-edit-form label:nth-of-type(5),
+.delivery-edit-form label:nth-of-type(6),
 .delivery-edit-form button {
   grid-column: 1 / -1;
 }
@@ -1196,7 +1250,7 @@ tbody tr.stale-row:hover {
     gap: 0.35rem;
   }
 
-  .nav-group span {
+  .nav-group > span {
     display: block;
   }
 
@@ -1683,6 +1737,11 @@ tbody tr.stale-row:hover {
   }
 
   .delivery-status-form {
+    width: 100%;
+  }
+
+  .delivery-status-form select {
+    max-width: none;
     width: 100%;
   }
 

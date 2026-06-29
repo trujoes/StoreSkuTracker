@@ -83,10 +83,25 @@
                 Remarks
                 <textarea name="remarks" rows="3">{{ row.remarks or '' }}</textarea>
               </label>
+              <label>
+                Edited by
+                <select name="employee_id">
+                  <option value="">Select employee</option>
+                  {% for employee in employees %}
+                  <option value="{{ employee.id }}">{{ employee.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
               <button type="submit" class="compact-button">Save edit</button>
             </form>
           </details>
           <form action="{{ url_for('update_delivery_status', delivery_id=row.id) }}" method="post" class="delivery-status-form">
+            <select name="employee_id" aria-label="Employee">
+              <option value="">Select employee</option>
+              {% for employee in employees %}
+              <option value="{{ employee.id }}">{{ employee.name }}</option>
+              {% endfor %}
+            </select>
             {% if row.is_done %}
             <input type="hidden" name="is_done" value="0">
             <button type="submit" class="compact-button secondary-button">Reopen</button>
@@ -138,6 +153,41 @@
       </label>
       <button type="submit">Add customer delivery</button>
     </form>
+  </article>
+
+  <article class="card list-card full-span">
+    <div class="section-heading">
+      <p class="eyebrow">History</p>
+      <h2>Latest delivery history</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Action</th>
+            <th>Employee</th>
+            <th>Delivery</th>
+            <th>Customer</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history_rows %}
+          <tr>
+            <td data-label="Time">{{ row.created_at | datetime_display }}</td>
+            <td data-label="Action">{{ row.action }}</td>
+            <td data-label="Employee">{{ row.employee_name or 'Not selected' }}</td>
+            <td data-label="Delivery">{{ row.items or 'No items added' }}</td>
+            <td data-label="Customer">{{ row.customer_name or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">No delivery history yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </article>
 </section>
 {% endblock %}
