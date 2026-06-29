@@ -436,6 +436,13 @@ button:hover {
   margin-bottom: 1rem;
 }
 
+.mobile-snapshot-heading,
+.mobile-dashboard-snapshot,
+.mobile-store-snapshot-list,
+.mobile-filter-prompt {
+  display: none;
+}
+
 .overview-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -918,6 +925,7 @@ button:hover {
 
 .delivery-form label:nth-of-type(4),
 .delivery-form label:nth-of-type(5),
+.delivery-form label:nth-of-type(6),
 .delivery-form button {
   grid-column: 1 / -1;
 }
@@ -1300,6 +1308,147 @@ tbody tr.stale-row:hover {
 
   .dashboard-layout {
     gap: 0.8rem;
+  }
+
+  .mobile-dashboard-snapshot {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    border-radius: 18px;
+  }
+
+  .mobile-snapshot-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .mobile-snapshot-kpis .overview-kpi {
+    padding: 0.55rem;
+    border-radius: 12px;
+  }
+
+  .mobile-snapshot-kpis .overview-kpi span {
+    font-size: 0.68rem;
+    margin-bottom: 0.18rem;
+  }
+
+  .mobile-snapshot-kpis .overview-kpi strong {
+    font-size: 1.05rem;
+  }
+
+  .mobile-snapshot-chart {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    padding: 0.72rem;
+  }
+
+  .mobile-store-snapshot-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .mobile-store-snapshot-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem 0.6rem;
+    align-items: center;
+    padding: 0.72rem;
+    border: 1px solid rgba(155, 28, 28, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .mobile-store-snapshot-row div {
+    display: grid;
+    gap: 0.18rem;
+    min-width: 0;
+  }
+
+  .mobile-store-snapshot-row strong {
+    overflow: hidden;
+    font-size: 0.92rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-store-snapshot-row span:not(.status-pill),
+  .mobile-store-snapshot-row small {
+    color: var(--muted);
+    font: 700 0.7rem/1.25 "IBM Plex Mono", monospace;
+  }
+
+  .mobile-store-snapshot-row small {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-store-sku-counts {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .mobile-sku-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    max-width: 100%;
+    min-height: 1.7rem;
+    padding: 0.3rem 0.48rem;
+    border-radius: 999px;
+  }
+
+  .mobile-sku-count strong {
+    overflow: hidden;
+    max-width: 9.5rem;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-sku-count em {
+    color: var(--text);
+    font: 800 0.72rem/1 "IBM Plex Mono", monospace;
+    font-style: normal;
+  }
+
+  .dashboard-layout .store-overview {
+    display: none;
+  }
+
+  .mobile-snapshot-heading {
+    display: block;
+    margin-bottom: -0.25rem;
+  }
+
+  .mobile-filter-prompt {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.9rem 0;
+    padding: 0.85rem;
+    border: 1px solid rgba(122, 75, 0, 0.14);
+    border-radius: 14px;
+    background: #fce7b7;
+    color: #7a4b00;
+  }
+
+  .mobile-filter-prompt strong {
+    font-size: 0.95rem;
+  }
+
+  .mobile-filter-prompt span {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .mobile-filter-prompt-hidden {
+    display: none;
+  }
+
+  .status-group-list.mobile-filter-required {
+    display: none;
   }
 
   .section-heading-actions {
@@ -1834,6 +1983,10 @@ tbody tr.stale-row:hover {
   .hero-stats,
   .overview-kpis {
     grid-template-columns: 1fr;
+  }
+
+  .mobile-snapshot-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .hero-stats .stat:first-child {

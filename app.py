@@ -657,6 +657,9 @@ def build_dashboard_store_overview(rows: list[dict], visit_performance: dict) ->
                 "sku_count": 0,
                 "critical_skus": 0,
                 "unhealthy_skus": 0,
+                "shelf_total": 0,
+                "recommended_total": 0,
+                "sku_breakdown": [],
                 "expiring_skus": 0,
                 "expiring_total": 0,
                 "is_overdue": False,
@@ -668,6 +671,17 @@ def build_dashboard_store_overview(rows: list[dict], visit_performance: dict) ->
             groups[row["store_id"]] = group
 
         group["sku_count"] += 1
+        group["shelf_total"] += row["shelf_count"] or 0
+        group["recommended_total"] += row["recommended_count"] or 0
+        group["sku_breakdown"].append(
+            {
+                "sku_name": row["sku_name"],
+                "shelf_count": row["shelf_count"] or 0,
+                "recommended_count": row["recommended_count"] or 0,
+                "status": row["status"],
+                "status_lower": row["status"].lower(),
+            }
+        )
         if row["status"] == "Critical":
             group["critical_skus"] += 1
         elif row["status"] == "Unhealthy":
@@ -1094,8 +1108,12 @@ def add_delivery():
     customer_name = request.form.get("customer_name", "").strip()
     address_phone = request.form.get("address_phone", "").strip()
     remarks = request.form.get("remarks", "").strip()
+    employee_id = request.form.get("employee_id", "").strip()
 
     db = get_db()
+    employee_row = get_employee_for_form(db, employee_id)
+    if employee_row is None:
+        return redirect(url_for("deliveries"))
     cursor = db.execute(
         """
         INSERT INTO deliveries (
@@ -1109,7 +1127,7 @@ def add_delivery():
         db,
         cursor.lastrowid,
         "Added",
-        None,
+        employee_row,
         items,
         customer_name,
     )
@@ -1130,6 +1148,8 @@ def update_delivery_status(delivery_id: int):
     if delivery_row is None:
         return redirect(url_for("deliveries"))
     employee_row = get_employee_for_form(db, employee_id)
+    if employee_row is None:
+        return redirect(url_for("deliveries"))
     db.execute(
         """
         UPDATE deliveries
@@ -1167,6 +1187,8 @@ def edit_delivery(delivery_id: int):
 
     db = get_db()
     employee_row = get_employee_for_form(db, employee_id)
+    if employee_row is None:
+        return redirect(url_for("deliveries"))
     db.execute(
         """
         UPDATE deliveries

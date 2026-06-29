@@ -37,16 +37,18 @@ function updateStoreOverview(overview) {
     healthy: overview.counts?.Healthy,
   };
   for (const [key, value] of Object.entries(countMap)) {
-    const element = document.querySelector(`[data-overview-count="${key}"]`);
-    if (element) {
+    document.querySelectorAll(`[data-overview-count="${key}"]`).forEach((element) => {
       element.textContent = value ?? 0;
-    }
+    });
   }
 
-  const donut = document.querySelector('[data-overview-donut]');
-  if (donut && overview.donut_style) {
-    donut.style.cssText = overview.donut_style;
+  if (overview.donut_style) {
+    document.querySelectorAll('[data-overview-donut]').forEach((donut) => {
+      donut.style.cssText = overview.donut_style;
+    });
   }
+
+  updateMobileStoreSnapshot(overview.rows || []);
 
   const body = document.querySelector('[data-store-overview-body]');
   if (!body) {
@@ -77,6 +79,38 @@ function updateStoreOverview(overview) {
       <td data-label="Action">${escapeHtml(row.action)}</td>
     </tr>
   `).join('');
+}
+
+function updateMobileStoreSnapshot(rows) {
+  const list = document.querySelector('[data-mobile-store-snapshot-list]');
+  if (!list) {
+    return;
+  }
+
+  if (!rows.length) {
+    list.innerHTML = '<p class="empty-state">No store status available yet.</p>';
+    return;
+  }
+
+  list.innerHTML = rows.map((row) => {
+    const skuCounts = (row.sku_breakdown || []).map((sku) => `
+      <span class="mobile-sku-count status-${escapeHtml(sku.status_lower)}">
+        <strong>${escapeHtml(sku.sku_name)}</strong>
+        <em>${escapeHtml(sku.shelf_count)}/${escapeHtml(sku.recommended_count)}</em>
+      </span>
+    `).join('');
+    return `
+    <div class="mobile-store-snapshot-row">
+      <div>
+        <strong>${escapeHtml(row.store_name)}</strong>
+        <span>${row.city_name ? `${escapeHtml(row.city_name)} · ` : ''}${escapeHtml(row.last_visit_display)}</span>
+      </div>
+      <span class="status-pill status-${escapeHtml(row.status_lower)}">${escapeHtml(row.status)}</span>
+      <div class="mobile-store-sku-counts">${skuCounts}</div>
+      <small>${escapeHtml(row.action)}</small>
+    </div>
+  `;
+  }).join('');
 }
 
 function buildDonutStyle(counts, total) {
@@ -124,16 +158,14 @@ function updateFilteredOverviewStats() {
     healthy: counts.Healthy,
   };
   for (const [key, value] of Object.entries(countMap)) {
-    const element = document.querySelector(`[data-overview-count="${key}"]`);
-    if (element) {
+    document.querySelectorAll(`[data-overview-count="${key}"]`).forEach((element) => {
       element.textContent = value;
-    }
+    });
   }
 
-  const donut = document.querySelector('[data-overview-donut]');
-  if (donut) {
+  document.querySelectorAll('[data-overview-donut]').forEach((donut) => {
     donut.style.cssText = buildDonutStyle(counts, total);
-  }
+  });
 }
 
 function updateStatusRow(formId, row) {
@@ -228,6 +260,7 @@ function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
   const query = String(rawQuery || '').trim().toLowerCase();
   const storeId = String(rawStoreId || '').trim();
   const cityId = String(rawCityId || '').trim();
+  const hasFilter = Boolean(query || storeId || cityId);
   const groups = document.querySelectorAll('[data-status-group]');
   let visibleCount = 0;
 
@@ -261,7 +294,17 @@ function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
 
   const emptyState = document.querySelector('.dashboard-filter-empty');
   if (emptyState) {
-    emptyState.style.display = visibleCount === 0 ? '' : 'none';
+    emptyState.style.display = hasFilter && visibleCount === 0 ? '' : 'none';
+  }
+
+  const statusGroupList = document.querySelector('[data-status-group-list]');
+  if (statusGroupList) {
+    statusGroupList.classList.toggle('mobile-filter-required', !hasFilter);
+  }
+
+  const mobileFilterPrompt = document.querySelector('[data-mobile-filter-prompt]');
+  if (mobileFilterPrompt) {
+    mobileFilterPrompt.classList.toggle('mobile-filter-prompt-hidden', hasFilter);
   }
 
   return visibleCount;

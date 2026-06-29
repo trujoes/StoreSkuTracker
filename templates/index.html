@@ -25,7 +25,65 @@
   </div>
 </section>
 
+<section class="card mobile-dashboard-snapshot" aria-label="Mobile status snapshot">
+  <div>
+    <p class="eyebrow">Snapshot</p>
+    <h2>Status Summary</h2>
+  </div>
+  <div class="overview-kpis mobile-snapshot-kpis">
+    <div class="overview-kpi">
+      <span>Critical</span>
+      <strong data-overview-count="critical_stores">{{ store_overview.critical_stores }}</strong>
+    </div>
+    <div class="overview-kpi">
+      <span>Watch</span>
+      <strong data-overview-count="unhealthy_stores">{{ store_overview.unhealthy_stores }}</strong>
+    </div>
+    <div class="overview-kpi">
+      <span>Overdue</span>
+      <strong data-overview-count="overdue_stores">{{ store_overview.overdue_stores }}</strong>
+    </div>
+    <div class="overview-kpi">
+      <span>Expiring</span>
+      <strong data-overview-count="expiring_skus">{{ store_overview.expiring_skus }}</strong>
+    </div>
+  </div>
+  <div class="overview-chart mobile-snapshot-chart">
+    <div class="status-donut" data-overview-donut style="{{ store_overview.donut_style }}">
+      <span data-overview-count="total">{{ store_overview.total }}</span>
+    </div>
+    <div class="overview-legend">
+      <span><i class="legend-dot legend-critical"></i>Critical <strong data-overview-count="critical">{{ store_overview.counts.Critical }}</strong></span>
+      <span><i class="legend-dot legend-unhealthy"></i>Unhealthy <strong data-overview-count="unhealthy">{{ store_overview.counts.Unhealthy }}</strong></span>
+      <span><i class="legend-dot legend-healthy"></i>Healthy <strong data-overview-count="healthy">{{ store_overview.counts.Healthy }}</strong></span>
+    </div>
+  </div>
+  <div class="mobile-store-snapshot-list" data-mobile-store-snapshot-list aria-label="Store quick look">
+    {% for row in store_overview.rows %}
+    <div class="mobile-store-snapshot-row">
+      <div>
+        <strong>{{ row.store_name }}</strong>
+        <span>{% if row.city_name %}{{ row.city_name }} · {% endif %}{{ row.last_visit_display }}</span>
+      </div>
+      <span class="status-pill status-{{ row.status_lower }}">{{ row.status }}</span>
+      <div class="mobile-store-sku-counts">
+        {% for sku in row.sku_breakdown %}
+        <span class="mobile-sku-count status-{{ sku.status_lower }}">
+          <strong>{{ sku.sku_name }}</strong>
+          <em>{{ sku.shelf_count }}/{{ sku.recommended_count }}</em>
+        </span>
+        {% endfor %}
+      </div>
+      <small>{{ row.action }}</small>
+    </div>
+    {% else %}
+    <p class="empty-state">No store status available yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="dashboard-layout">
+  {% set has_dashboard_filter = search or selected_city_id or selected_store_id %}
   <article class="card list-card">
     <div class="section-heading section-heading-actions">
       <div>
@@ -52,6 +110,10 @@
     </form>
 
     <section class="store-overview" aria-label="Store overview">
+      <div class="mobile-snapshot-heading">
+        <p class="eyebrow">Snapshot</p>
+        <h2>Status Summary</h2>
+      </div>
       <div class="overview-kpis">
         <div class="overview-kpi">
           <span>Critical stores</span>
@@ -125,7 +187,12 @@
       </div>
     </section>
 
-    <div class="status-group-list">
+    <div class="mobile-filter-prompt {% if has_dashboard_filter %}mobile-filter-prompt-hidden{% endif %}" data-mobile-filter-prompt>
+      <strong>Select a filter to edit stock</strong>
+      <span>Choose a store, city, or search SKU/employee to show the editable rows.</span>
+    </div>
+
+    <div class="status-group-list {% if not has_dashboard_filter %}mobile-filter-required{% endif %}" data-status-group-list>
       {% for group in dashboard_status_groups %}
       <section class="status-store-group" data-status-group data-store-id="{{ group.store_id }}" data-city-id="{{ group.city_id or '' }}">
         <div class="status-store-heading">
