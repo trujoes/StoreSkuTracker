@@ -406,6 +406,12 @@ button:hover {
   margin-bottom: 1rem;
 }
 
+.dashboard-top-filter {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 20px;
+}
+
 .status-note {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

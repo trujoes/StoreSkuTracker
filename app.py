@@ -735,14 +735,7 @@ def build_dashboard_store_overview(rows: list[dict], visit_performance: dict) ->
             }
         )
 
-    overview_rows.sort(
-        key=lambda row: (
-            -status_rank[row["status"]],
-            -row["expiring_skus"],
-            -row["monthly_remaining_to_pace"],
-            row["store_name"].lower(),
-        )
-    )
+    overview_rows.sort(key=lambda row: row["store_name"].lower())
 
     total = len(overview_rows)
     if total:
@@ -891,6 +884,14 @@ def dashboard():
             selected_city_id_value = int(selected_city_id)
         except ValueError:
             selected_city_id_value = None
+    if selected_city_id_value is not None and selected_store_id_value is not None:
+        store_city_row = db.execute(
+            "SELECT city_id FROM stores WHERE id = ?",
+            (selected_store_id_value,),
+        ).fetchone()
+        if store_city_row is None or store_city_row["city_id"] != selected_city_id_value:
+            selected_store_id = ""
+            selected_store_id_value = None
     current_status_rows = fetch_current_status_rows(search, selected_store_id_value, selected_city_id_value)
     dashboard_status_groups = []
     dashboard_groups_by_store: dict[int, dict] = {}
@@ -915,7 +916,13 @@ def dashboard():
         LIMIT 10
         """
     ).fetchall()
-    stores = db.execute("SELECT id, name FROM stores ORDER BY name COLLATE NOCASE").fetchall()
+    if selected_city_id_value is not None:
+        stores = db.execute(
+            "SELECT id, name, city_id FROM stores WHERE city_id = ? ORDER BY name COLLATE NOCASE",
+            (selected_city_id_value,),
+        ).fetchall()
+    else:
+        stores = db.execute("SELECT id, name, city_id FROM stores ORDER BY name COLLATE NOCASE").fetchall()
     cities = db.execute("SELECT id, name FROM cities ORDER BY name COLLATE NOCASE").fetchall()
     skus = db.execute("SELECT id, name FROM skus ORDER BY name COLLATE NOCASE").fetchall()
     employees = db.execute("SELECT id, name FROM employees ORDER BY name COLLATE NOCASE").fetchall()

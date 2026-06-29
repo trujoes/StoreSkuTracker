@@ -100,7 +100,12 @@ function updateMobileStoreSnapshot(rows) {
       </span>
     `).join('');
     return `
-    <div class="mobile-store-snapshot-row">
+    <div
+      class="mobile-store-snapshot-row"
+      data-mobile-store-row
+      data-store-id="${escapeHtml(row.store_id)}"
+      data-city-id="${escapeHtml(row.city_id || '')}"
+    >
       <div>
         <strong>${escapeHtml(row.store_name)}</strong>
         <span>${row.city_name ? `${escapeHtml(row.city_name)} · ` : ''}${escapeHtml(row.last_visit_display)}</span>
@@ -256,6 +261,31 @@ function submitInlineForm(formId) {
   });
 }
 
+function syncStoreOptionsForCity(citySelect, storeSelect) {
+  if (!citySelect || !storeSelect) {
+    return;
+  }
+
+  const cityId = String(citySelect.value || '').trim();
+  let selectedStoreStillVisible = !storeSelect.value;
+  storeSelect.querySelectorAll('option').forEach((option) => {
+    if (!option.value) {
+      option.hidden = false;
+      return;
+    }
+    const optionCityId = String(option.dataset.cityId || '').trim();
+    const isVisible = !cityId || optionCityId === cityId;
+    option.hidden = !isVisible;
+    if (option.selected && isVisible) {
+      selectedStoreStillVisible = true;
+    }
+  });
+
+  if (!selectedStoreStillVisible) {
+    storeSelect.value = '';
+  }
+}
+
 function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
   const query = String(rawQuery || '').trim().toLowerCase();
   const storeId = String(rawStoreId || '').trim();
@@ -291,6 +321,14 @@ function applyDashboardFilter(rawQuery, rawStoreId = '', rawCityId = '') {
     row.style.display = matchesQuery && matchesStore && matchesCity ? '' : 'none';
   });
   updateFilteredOverviewStats();
+
+  document.querySelectorAll('[data-mobile-store-row]').forEach((row) => {
+    const rowText = row.textContent.toLowerCase();
+    const matchesQuery = !query || rowText.includes(query);
+    const matchesStore = !storeId || row.dataset.storeId === storeId;
+    const matchesCity = !cityId || row.dataset.cityId === cityId;
+    row.style.display = matchesQuery && matchesStore && matchesCity ? '' : 'none';
+  });
 
   const emptyState = document.querySelector('.dashboard-filter-empty');
   if (emptyState) {
@@ -430,6 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = searchBar.querySelector('input[name="search"]');
   const citySelect = searchBar.querySelector('select[name="city_id"]');
   const storeSelect = searchBar.querySelector('select[name="store_id"]');
+  syncStoreOptionsForCity(citySelect, storeSelect);
   if (searchInput) {
     applyDashboardFilter(searchInput.value, storeSelect ? storeSelect.value : '', citySelect ? citySelect.value : '');
   }
@@ -463,6 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (citySelect) {
     citySelect.addEventListener('change', () => {
+      syncStoreOptionsForCity(citySelect, storeSelect);
       searchBar.requestSubmit();
     });
   }
